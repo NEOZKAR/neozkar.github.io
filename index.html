@@ -394,8 +394,7 @@
         <thead>
           <tr>
             <th style="display:none"><input type="checkbox" id="selectAllVentas"> Seleccionar</th>
-            <th>Fecha</th>
-            <th>Hora</th>
+            <th>Fecha y Hora</th>
             <th>Cliente</th>
             <th>Tour</th>
             <th>Guía(s)</th>
@@ -932,6 +931,9 @@ function renderizarReservasGuardadas() {
   const tabla = document.getElementById('ventasTable').getElementsByTagName('tbody')[0];
   tabla.innerHTML = '';
   
+  // Sort reservas by date and time
+  sistemaReservas.reservas.sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora));
+  
   // Update header text
   const headerRow = document.querySelector('#ventasTable thead tr');
   const observacionesHeader = Array.from(headerRow.cells).find(cell => cell.textContent === 'Observaciones');
@@ -956,9 +958,17 @@ function renderizarReservasGuardadas() {
 
     const tourDisplayName = tourDisplayNames[reserva.tour] || reserva.tour;
     
+    // Format date and time together
+    const fechaHora = new Date(reserva.fechaHora).toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
     row.innerHTML += `
-      <td>${new Date(reserva.fechaHora).toLocaleDateString()}</td>
-      <td>${new Date(reserva.fechaHora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+      <td>${fechaHora}</td>
       <td>${reserva.nombreCliente}</td>
       <td>${tourDisplayName}</td>
       <td>${reserva.recursos.filter(r => !r.includes('Cuatri') && !['Aveo', 'Pointer', 'Sentra', 'Taxi'].includes(r)).join(', ')}</td>
@@ -1072,17 +1082,16 @@ function exportarAPDF() {
       halign: 'left'
     },
     columnStyles: {
-      0: { cellWidth: 25 }, // Fecha
-      1: { cellWidth: 25 }, // Hora
-      2: { cellWidth: 25 }, // Cliente
-      3: { cellWidth: 25 }, // Tour
-      4: { cellWidth: 25 }, // Guía(s)
-      5: { cellWidth: 20 }, // Vehículo
-      6: { cellWidth: 20 }, // Cuatrimoto
-      7: { cellWidth: 20 }, // Total
-      8: { cellWidth: 25 }, // Estado
-      9: { cellWidth: 25 }, // Vendedor
-      10: { cellWidth: 35 }  // Observaciones
+      0: { cellWidth: 35 }, // Fecha y Hora
+      1: { cellWidth: 25 }, // Cliente
+      2: { cellWidth: 15 }, // Tour
+      3: { cellWidth: 20 }, // Guía(s)
+      4: { cellWidth: 20 }, // Vehículo
+      5: { cellWidth: 20 }, // Cuatrimoto
+      6: { cellWidth: 20 }, // Total
+      7: { cellWidth: 25 }, // Estado
+      8: { cellWidth: 25 }, // Vendedor
+      9: { cellWidth: 35 }  // Observaciones
     },
     margin: { left: 10, right: 10 }, // Reduced margins
     didDrawPage: function(data) {
@@ -1116,17 +1125,16 @@ function exportarAExcel() {
   XLSX.utils.book_append_sheet(wb, ws, "Registro de Ventas");
   
   const colWidths = [
-    {wch: 12},
-    {wch: 8},
-    {wch: 25},
-    {wch: 15},
-    {wch: 20},
-    {wch: 20},
-    {wch: 10},
-    {wch: 12},
-    {wch: 15},
-    {wch: 20},
-    {wch: 30}
+    {wch: 20}, // Fecha y Hora (wider column)
+    {wch: 25}, // Cliente
+    {wch: 15}, // Tour
+    {wch: 20}, // Guía(s)
+    {wch: 20}, // Vehículo
+    {wch: 10}, // Cuatrimoto
+    {wch: 12}, // Total
+    {wch: 15}, // Estado
+    {wch: 20}, // Vendedor
+    {wch: 30}  // Observaciones
   ];
   ws['!cols'] = colWidths;
   
