@@ -404,7 +404,7 @@
             <th>Total</th>
             <th>Estado</th>
             <th>Vendedor</th>
-            <th>Observaciones</th>
+            <th>Observaciones/Motivo de cancelación</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -497,6 +497,15 @@ class Reserva {
     this.observaciones = observaciones;
     this.isCanceled = isCanceled;
     this.fechaFin = new Date(this.fechaHora.getTime() + duracion * 60000);
+    
+    // Adding explicit fields for the data that was getting lost
+    this.tour = '';
+    this.costoTotal = 0;
+    this.vendedor = '';
+    this.numPersonas = 0;
+    this.anticipo = 0;
+    this.metodoPago = '';
+    this.receptorPago = '';
   }
 }
 
@@ -510,7 +519,7 @@ class SistemaReservas {
     if (!reservasGuardadas) return [];
 
     return JSON.parse(reservasGuardadas).map(r => {
-      return new Reserva(
+      const reserva = new Reserva(
         r.nombreCliente,
         r.telefonoCliente,
         r.fechaHora,
@@ -519,6 +528,17 @@ class SistemaReservas {
         r.observaciones,
         r.isCanceled
       );
+      
+      // Explicitly restore all fields
+      reserva.tour = r.tour;
+      reserva.numPersonas = r.numPersonas;
+      reserva.costoTotal = r.costoTotal;
+      reserva.anticipo = r.anticipo;
+      reserva.metodoPago = r.metodoPago;
+      reserva.vendedor = r.vendedor;
+      reserva.receptorPago = r.receptorPago;
+      
+      return reserva;
     });
   }
 
@@ -851,8 +871,9 @@ document.addEventListener('DOMContentLoaded', function() {
       observaciones
     );
     
+    // Explicitly set all fields
     nuevaReserva.tour = tour;
-    nuevaReserva.numPersonas = numPersonas;
+    nuevaReserva.numPersonas = parseInt(numPersonas);
     nuevaReserva.costoTotal = costoTotal;
     nuevaReserva.anticipo = anticipo;
     nuevaReserva.metodoPago = metodoPago;
@@ -911,6 +932,13 @@ function renderizarReservasGuardadas() {
   const tabla = document.getElementById('ventasTable').getElementsByTagName('tbody')[0];
   tabla.innerHTML = '';
   
+  // Update header text
+  const headerRow = document.querySelector('#ventasTable thead tr');
+  const observacionesHeader = Array.from(headerRow.cells).find(cell => cell.textContent === 'Observaciones');
+  if (observacionesHeader) {
+    observacionesHeader.textContent = 'Observaciones/Motivo de cancelación';
+  }
+
   sistemaReservas.reservas.forEach((reserva, index) => {
     const row = tabla.insertRow();
     const checkboxCell = row.insertCell(0);
