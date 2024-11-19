@@ -5,8 +5,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -441,38 +439,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "your-project.firebaseapp.com",
-  databaseURL: "https://your-project.firebaseio.com",
-  projectId: "your-project",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "your-sender-id",
-  appId: "your-app-id"
-};
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-
 class ConnectionManager {
   constructor() {
     this.isOnline = navigator.onLine;
     this.setupListeners();
-    this.setupFirebaseConnection();
-  }
-
-  setupFirebaseConnection() {
-    const connectedRef = database.ref(".info/connected");
-    connectedRef.on("value", (snap) => {
-      if (snap.val() === true) {
-        this.isOnline = true;
-      } else {
-        this.isOnline = false;
-      }
-      this.updateStatus();
-    });
+    this.updateStatus();
   }
 
   setupListeners() {
@@ -539,43 +510,38 @@ class Reserva {
 
 class SistemaReservas {
   constructor() {
-    this.reservas = [];
-    this.setupRealtimeSync();
+    this.reservas = this.cargarReservas();
   }
 
-  setupRealtimeSync() {
-    // Listen for changes in the database
-    database.ref('reservas').on('value', (snapshot) => {
-      const data = snapshot.val();
-      this.reservas = data ? Object.values(data).map(r => {
-        const reserva = new Reserva(
-          r.nombreCliente,
-          r.telefonoCliente,
-          r.fechaHora,
-          r.duracion,
-          r.recursos,
-          r.observaciones,
-          r.isCanceled
-        );
-        
-        reserva.tour = r.tour;
-        reserva.numPersonas = r.numPersonas;
-        reserva.costoTotal = r.costoTotal;
-        reserva.anticipo = r.anticipo;
-        reserva.metodoPago = r.metodoPago;
-        reserva.vendedor = r.vendedor;
-        reserva.receptorPago = r.receptorPago;
-        
-        return reserva;
-      }) : [];
+  cargarReservas() {
+    const reservasGuardadas = localStorage.getItem('reservas');
+    if (!reservasGuardadas) return [];
+
+    return JSON.parse(reservasGuardadas).map(r => {
+      const reserva = new Reserva(
+        r.nombreCliente,
+        r.telefonoCliente,
+        r.fechaHora,
+        r.duracion,
+        r.recursos,
+        r.observaciones,
+        r.isCanceled
+      );
       
-      renderizarReservasGuardadas();
+      reserva.tour = r.tour;
+      reserva.numPersonas = r.numPersonas;
+      reserva.costoTotal = r.costoTotal;
+      reserva.anticipo = r.anticipo;
+      reserva.metodoPago = r.metodoPago;
+      reserva.vendedor = r.vendedor;
+      reserva.receptorPago = r.receptorPago;
+      
+      return reserva;
     });
   }
 
   guardarReservas() {
-    // Save to Firebase instead of localStorage
-    database.ref('reservas').set(this.reservas);
+    localStorage.setItem('reservas', JSON.stringify(this.reservas));
   }
 
   agregarReserva(reserva) {
