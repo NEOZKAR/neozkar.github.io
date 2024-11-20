@@ -476,6 +476,84 @@ class ConnectionManager {
   }
 }
 
+class RealtimeManager {
+  constructor() {
+    this.syncInterval = 5000; // Sync every 5 seconds
+    this.lastSync = Date.now();
+    this.setupSync();
+  }
+
+  setupSync() {
+    setInterval(() => this.syncData(), this.syncInterval);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'reservas') {
+        this.handleStorageChange(e);
+      }
+    });
+  }
+
+  syncData() {
+    const currentTime = Date.now();
+    if (currentTime - this.lastSync >= this.syncInterval) {
+      const storedData = localStorage.getItem('reservas');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        sistemaReservas.reservas = parsedData.map(r => {
+          const reserva = new Reserva(
+            r.nombreCliente,
+            r.telefonoCliente,
+            r.fechaHora,
+            r.duracion,
+            r.recursos,
+            r.observaciones,
+            r.isCanceled
+          );
+          
+          reserva.tour = r.tour;
+          reserva.numPersonas = r.numPersonas;
+          reserva.costoTotal = r.costoTotal;
+          reserva.anticipo = r.anticipo;
+          reserva.metodoPago = r.metodoPago;
+          reserva.vendedor = r.vendedor;
+          reserva.receptorPago = r.receptorPago;
+          
+          return reserva;
+        });
+        renderizarReservasGuardadas();
+      }
+      this.lastSync = currentTime;
+    }
+  }
+
+  handleStorageChange(e) {
+    if (e.newValue !== null) {
+      const parsedData = JSON.parse(e.newValue);
+      sistemaReservas.reservas = parsedData.map(r => {
+        const reserva = new Reserva(
+          r.nombreCliente,
+          r.telefonoCliente,
+          r.fechaHora,
+          r.duracion,
+          r.recursos,
+          r.observaciones,
+          r.isCanceled
+        );
+        
+        reserva.tour = r.tour;
+        reserva.numPersonas = r.numPersonas;
+        reserva.costoTotal = r.costoTotal;
+        reserva.anticipo = r.anticipo;
+        reserva.metodoPago = r.metodoPago;
+        reserva.vendedor = r.vendedor;
+        reserva.receptorPago = r.receptorPago;
+        
+        return reserva;
+      });
+      renderizarReservasGuardadas();
+    }
+  }
+}
+
 const DURACIONES = {
   'Cabalgata': 90,
   'Cuatrimotos': 90,
@@ -620,6 +698,7 @@ class SistemaReservas {
 }
 
 const sistemaReservas = new SistemaReservas();
+const realtimeManager = new RealtimeManager();
 
 function formatearFecha(fecha) {
   if (!fecha) return 'N/A';
@@ -810,6 +889,7 @@ function showCancelacionModal(index) {
 
 document.addEventListener('DOMContentLoaded', function() {
   const connectionManager = new ConnectionManager();
+  const realtimeManager = new RealtimeManager();
   const costoTourInput = document.getElementById('costoTour');
   const anticipoInput = document.getElementById('anticipo');
   const metodoPagoSelect = document.getElementById('metodoPago');
@@ -939,12 +1019,17 @@ document.addEventListener('DOMContentLoaded', function() {
       sistemaReservas.agregarReserva(nuevaReserva);
     }
     
-    sistemaReservas.guardarReservas();
-    renderizarReservasGuardadas();
-    
-    document.getElementById('limpiarFormulario').click();
-    
-    alert('Venta registrada exitosamente');
+    try {
+      sistemaReservas.guardarReservas();
+      renderizarReservasGuardadas();
+      
+      document.getElementById('limpiarFormulario').click();
+      
+      alert('Venta registrada exitosamente');
+    } catch (error) {
+      console.error('Error al guardar la venta:', error);
+      alert('Error al guardar la venta. Por favor intente nuevamente.');
+    }
   });
 
   if(selectAllCheckbox) {
