@@ -439,6 +439,57 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+let deleteMode = false;
+let selectedIndices = new Set();
+
+const DURACIONES = {
+  'Cabalgata': 90,
+  'Cuatrimotos': 90,
+  'ReservaVenados': 90,
+  'TunelesVolcanicos': 120,
+  'MixtoVenados': 100,
+  'RutasLargas': 180
+};
+
+class Reserva {
+  constructor(nombreCliente, telefonoCliente, fechaHora, duracion, recursos, observaciones, isCanceled = false) {
+    this.nombreCliente = nombreCliente;
+    this.telefonoCliente = telefonoCliente; 
+    this.fechaHora = fechaHora;
+    this.duracion = duracion;
+    this.recursos = recursos;
+    this.observaciones = observaciones;
+    this.isCanceled = isCanceled;
+    
+    this.tour = null;
+    this.numPersonas = null;
+    this.costoTotal = null;
+    this.anticipo = null;
+    this.metodoPago = null;
+    this.vendedor = null;
+    this.receptorPago = null;
+  }
+
+  toJSON() {
+    return {
+      nombreCliente: this.nombreCliente,
+      telefonoCliente: this.telefonoCliente,
+      fechaHora: this.fechaHora,
+      duracion: this.duracion,
+      recursos: this.recursos,
+      observaciones: this.observaciones,
+      isCanceled: this.isCanceled,
+      tour: this.tour,
+      numPersonas: this.numPersonas,
+      costoTotal: this.costoTotal,
+      anticipo: this.anticipo,
+      metodoPago: this.metodoPago,
+      vendedor: this.vendedor,
+      receptorPago: this.receptorPago
+    };
+  }
+}
+
 class ConnectionManager {
   constructor() {
     this.isOnline = navigator.onLine;
@@ -478,10 +529,40 @@ class ConnectionManager {
 
 class RealtimeManager {
   constructor() {
-    this.syncInterval = 1000; // Reduce to 1 second for more frequent updates
+    this.syncInterval = 1000; // Check every second
     this.lastSync = Date.now();
     this.setupSync();
     this.setupStorageListener();
+    this.setupWebSocket(); // Add WebSocket support for real-time updates
+  }
+
+  setupWebSocket() {
+    if (!window.WebSocket) {
+      console.log('WebSocket not supported, using localStorage sync');
+      return;
+    }
+
+    try {
+      this.ws = new WebSocket('wss://your-websocket-server.com');
+      
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'reservas_update') {
+            this.handleRemoteUpdate(data.reservas);
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+        }
+      };
+
+      this.ws.onclose = () => {
+        console.log('WebSocket connection closed, falling back to localStorage sync');
+        setTimeout(() => this.setupWebSocket(), 5000);
+      };
+    } catch (error) {
+      console.error('WebSocket connection failed:', error);
+    }
   }
 
   setupSync() {
@@ -489,54 +570,67 @@ class RealtimeManager {
   }
 
   setupStorageListener() {
-    // Listen for storage changes from other tabs/windows
     window.addEventListener('storage', (e) => {
       if (e.key === 'reservas') {
         this.handleStorageChange(e);
       }
     });
 
-    // Add a custom event for same-tab updates
-    window.addEventListener('localStorageUpdated', (e) => {
+    window.addEventListener('localStorageUpdated', () => {
       this.syncData();
     });
+  }
+
+  handleRemoteUpdate(reservas) {
+    try {
+      sistemaReservas.reservas = reservas.map(r => {
+        const reserva = new Reserva(
+          r.nombreCliente,
+          r.telefonoCliente,
+          r.fechaHora,
+          r.duracion,
+          r.recursos,
+          r.observaciones,
+          r.isCanceled
+        );
+        
+        Object.assign(reserva, {
+          tour: r.tour,
+          numPersonas: r.numPersonas,
+          costoTotal: r.costoTotal,
+          anticipo: r.anticipo,
+          metodoPago: r.metodoPago,
+          vendedor: r.vendedor,
+          receptorPago: r.receptorPago
+        });
+        
+        return reserva;
+      });
+      
+      renderizarReservasGuardadas();
+    } catch (error) {
+      console.error('Error handling remote update:', error);
+    }
   }
 
   syncData() {
     const currentTime = Date.now();
     if (currentTime - this.lastSync >= this.syncInterval) {
-      const storedData = localStorage.getItem('reservas');
-      if (storedData) {
-        try {
+      try {
+        const storedData = localStorage.getItem('reservas');
+        if (storedData) {
           const parsedData = JSON.parse(storedData);
-          sistemaReservas.reservas = parsedData.map(r => {
-            const reserva = new Reserva(
-              r.nombreCliente,
-              r.telefonoCliente,
-              r.fechaHora,
-              r.duracion,
-              r.recursos,
-              r.observaciones,
-              r.isCanceled
-            );
-            
-            // Copy all additional properties
-            Object.assign(reserva, {
-              tour: r.tour,
-              numPersonas: r.numPersonas,
-              costoTotal: r.costoTotal,
-              anticipo: r.anticipo,
-              metodoPago: r.metodoPago,
-              vendedor: r.vendedor,
-              receptorPago: r.receptorPago
-            });
-            
-            return reserva;
-          });
-          renderizarReservasGuardadas();
-        } catch (error) {
-          console.error('Error parsing stored data:', error);
+          this.handleRemoteUpdate(parsedData);
+          
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+              type: 'reservas_update',
+              reservas: parsedData
+            }));
+          }
         }
+      } catch (error) {
+        console.error('Error during sync:', error);
       }
       this.lastSync = currentTime;
     }
@@ -546,67 +640,11 @@ class RealtimeManager {
     if (e.newValue !== null) {
       try {
         const parsedData = JSON.parse(e.newValue);
-        sistemaReservas.reservas = parsedData.map(r => {
-          const reserva = new Reserva(
-            r.nombreCliente,
-            r.telefonoCliente,
-            r.fechaHora,
-            r.duracion,
-            r.recursos,
-            r.observaciones,
-            r.isCanceled
-          );
-          
-          // Copy all additional properties
-          Object.assign(reserva, {
-            tour: r.tour,
-            numPersonas: r.numPersonas,
-            costoTotal: r.costoTotal,
-            anticipo: r.anticipo,
-            metodoPago: r.metodoPago,
-            vendedor: r.vendedor,
-            receptorPago: r.receptorPago
-          });
-          
-          return reserva;
-        });
-        renderizarReservasGuardadas();
+        this.handleRemoteUpdate(parsedData);
       } catch (error) {
-        console.error('Error parsing storage change:', error);
+        console.error('Error handling storage change:', error);
       }
     }
-  }
-}
-
-const DURACIONES = {
-  'Cabalgata': 90,
-  'Cuatrimotos': 90,
-  'ReservaVenados': 90,
-  'TunelesVolcanicos': 120,
-  'MixtoVenados': 100,
-  'RutasLargas': 180
-};
-
-let deleteMode = false;
-
-class Reserva {
-  constructor(nombreCliente, telefonoCliente, fechaHora, duracion, recursos, observaciones, isCanceled = false) {
-    this.nombreCliente = nombreCliente;
-    this.telefonoCliente = telefonoCliente;
-    this.fechaHora = new Date(fechaHora);
-    this.duracion = duracion;
-    this.recursos = recursos;
-    this.observaciones = observaciones;
-    this.isCanceled = isCanceled;
-    this.fechaFin = new Date(this.fechaHora.getTime() + duracion * 60000);
-    
-    this.tour = '';
-    this.costoTotal = 0;
-    this.vendedor = '';
-    this.numPersonas = 0;
-    this.anticipo = 0;
-    this.metodoPago = '';
-    this.receptorPago = '';
   }
 }
 
@@ -644,9 +682,19 @@ class SistemaReservas {
 
   guardarReservas() {
     try {
-      localStorage.setItem('reservas', JSON.stringify(this.reservas));
-      // Dispatch custom event for same-tab updates
+      const data = JSON.stringify(this.reservas);
+      localStorage.setItem('reservas', data);
+      
       window.dispatchEvent(new Event('localStorageUpdated'));
+      
+      if (window.realtimeManager && 
+          window.realtimeManager.ws && 
+          window.realtimeManager.ws.readyState === WebSocket.OPEN) {
+        window.realtimeManager.ws.send(JSON.stringify({
+          type: 'reservas_update',
+          reservas: this.reservas
+        }));
+      }
     } catch (error) {
       console.error('Error saving reservations:', error);
       alert('Error al guardar las reservas. Por favor intente nuevamente.');
@@ -669,13 +717,11 @@ class SistemaReservas {
     const inicio = new Date(fechaHora);
     const fin = new Date(inicio.getTime() + duracion * 60000);
 
-    // Special case for guides in ATV tours
     if (recurso.match(/^(Alberto C|Ana R|Ángel|Erick V|Iván J|Joaquín L|Luis A|Toño P|Otro)$/)) {
         const tourSelect = document.getElementById('tour');
         const isAtvTour = ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(tourSelect.value);
         
         if (isAtvTour) {
-            // Count how many times this guide is already assigned in overlapping ATV tours
             let guideCount = 0;
             this.reservas.forEach(reserva => {
                 if (reserva.isCanceled) return false;
@@ -691,12 +737,10 @@ class SistemaReservas {
                 }
             });
             
-            // Allow up to 3 ATV assignments
             return guideCount < 3;
         }
     }
 
-    // For all other resources, use the original logic
     return !this.reservas.some(reserva => {
         if (reserva.isCanceled) return false;
 
@@ -724,7 +768,7 @@ class SistemaReservas {
       }
     }
     
-    return fechaInicio; // Resource is currently available
+    return fechaInicio;
   }
 }
 
@@ -774,7 +818,6 @@ function actualizarDisponibilidad() {
         availabilityInfo.textContent = `Próxima disponibilidad: ${formatearFecha(nextAvailable)}`;
         label.appendChild(availabilityInfo);
       } else if (isAtvTour) {
-        // Add counter for ATV assignments
         let count = 0;
         sistemaReservas.reservas.forEach(reserva => {
           const reservaInicio = new Date(reserva.fechaHora);
@@ -1068,6 +1111,12 @@ document.addEventListener('DOMContentLoaded', function() {
       const checkboxes = document.querySelectorAll('.venta-checkbox');
       checkboxes.forEach(checkbox => {
         checkbox.checked = this.checked;
+        const index = parseInt(checkbox.dataset.index);
+        if (this.checked) {
+          selectedIndices.add(index);
+        } else {
+          selectedIndices.delete(index);
+        }
       });
     });
   }
@@ -1107,7 +1156,9 @@ function renderizarReservasGuardadas() {
     const row = tabla.insertRow();
     const checkboxCell = row.insertCell(0);
     checkboxCell.style.display = deleteMode ? 'table-cell' : 'none';
-    checkboxCell.innerHTML = `<input type="checkbox" class="venta-checkbox" data-index="${index}">`;
+    
+    const isChecked = selectedIndices.has(index) ? 'checked' : '';
+    checkboxCell.innerHTML = `<input type="checkbox" class="venta-checkbox" data-index="${index}" ${isChecked}>`;
     
     const tourDisplayNames = {
       'Cabalgata': 'Cabalgata (1.5 hrs)',
@@ -1137,6 +1188,18 @@ function renderizarReservasGuardadas() {
         <button class="btn btn-sm btn-danger" onclick="showCancelacionModal(${index})">Cancelar</button>
       </td>
     `;
+  });
+
+  document.querySelectorAll('.venta-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function(e) {
+      const index = parseInt(this.dataset.index);
+      if (this.checked) {
+        selectedIndices.add(index);
+      } else {
+        selectedIndices.delete(index);
+      }
+      e.stopPropagation();
+    });
   });
 }
 
@@ -1174,6 +1237,7 @@ function toggleDeleteMode() {
   }
 
   if(!deleteMode) {
+    selectedIndices.clear();
     if(selectAllCheckbox) {
       selectAllCheckbox.checked = false;
     }
@@ -1184,19 +1248,19 @@ function toggleDeleteMode() {
 }
 
 function deleteSelectedVentas() {
-  const checkboxes = document.querySelectorAll('.venta-checkbox:checked');
-  const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index)).sort((a,b) => b-a);
-  
-  if (indices.length === 0) {
+  if (selectedIndices.size === 0) {
     alert('Por favor seleccione al menos una venta para eliminar');
     return;
   }
   
-  if (confirm(`¿Está seguro que desea eliminar ${indices.length} registro(s)?`)) {
-    indices.forEach(index => {
+  if (confirm(`¿Está seguro que desea eliminar ${selectedIndices.size} registro(s)?`)) {
+    const indicesToDelete = Array.from(selectedIndices).sort((a, b) => b - a);
+    
+    indicesToDelete.forEach(index => {
       sistemaReservas.reservas.splice(index, 1);
     });
     
+    selectedIndices.clear();
     sistemaReservas.guardarReservas();
     renderizarReservasGuardadas();
     toggleDeleteMode();
