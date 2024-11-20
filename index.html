@@ -478,17 +478,27 @@ class ConnectionManager {
 
 class RealtimeManager {
   constructor() {
-    this.syncInterval = 5000; // Sync every 5 seconds
+    this.syncInterval = 1000; // Reduce to 1 second for more frequent updates
     this.lastSync = Date.now();
     this.setupSync();
+    this.setupStorageListener();
   }
 
   setupSync() {
     setInterval(() => this.syncData(), this.syncInterval);
+  }
+
+  setupStorageListener() {
+    // Listen for storage changes from other tabs/windows
     window.addEventListener('storage', (e) => {
       if (e.key === 'reservas') {
         this.handleStorageChange(e);
       }
+    });
+
+    // Add a custom event for same-tab updates
+    window.addEventListener('localStorageUpdated', (e) => {
+      this.syncData();
     });
   }
 
@@ -497,7 +507,45 @@ class RealtimeManager {
     if (currentTime - this.lastSync >= this.syncInterval) {
       const storedData = localStorage.getItem('reservas');
       if (storedData) {
-        const parsedData = JSON.parse(storedData);
+        try {
+          const parsedData = JSON.parse(storedData);
+          sistemaReservas.reservas = parsedData.map(r => {
+            const reserva = new Reserva(
+              r.nombreCliente,
+              r.telefonoCliente,
+              r.fechaHora,
+              r.duracion,
+              r.recursos,
+              r.observaciones,
+              r.isCanceled
+            );
+            
+            // Copy all additional properties
+            Object.assign(reserva, {
+              tour: r.tour,
+              numPersonas: r.numPersonas,
+              costoTotal: r.costoTotal,
+              anticipo: r.anticipo,
+              metodoPago: r.metodoPago,
+              vendedor: r.vendedor,
+              receptorPago: r.receptorPago
+            });
+            
+            return reserva;
+          });
+          renderizarReservasGuardadas();
+        } catch (error) {
+          console.error('Error parsing stored data:', error);
+        }
+      }
+      this.lastSync = currentTime;
+    }
+  }
+
+  handleStorageChange(e) {
+    if (e.newValue !== null) {
+      try {
+        const parsedData = JSON.parse(e.newValue);
         sistemaReservas.reservas = parsedData.map(r => {
           const reserva = new Reserva(
             r.nombreCliente,
@@ -509,47 +557,23 @@ class RealtimeManager {
             r.isCanceled
           );
           
-          reserva.tour = r.tour;
-          reserva.numPersonas = r.numPersonas;
-          reserva.costoTotal = r.costoTotal;
-          reserva.anticipo = r.anticipo;
-          reserva.metodoPago = r.metodoPago;
-          reserva.vendedor = r.vendedor;
-          reserva.receptorPago = r.receptorPago;
+          // Copy all additional properties
+          Object.assign(reserva, {
+            tour: r.tour,
+            numPersonas: r.numPersonas,
+            costoTotal: r.costoTotal,
+            anticipo: r.anticipo,
+            metodoPago: r.metodoPago,
+            vendedor: r.vendedor,
+            receptorPago: r.receptorPago
+          });
           
           return reserva;
         });
         renderizarReservasGuardadas();
+      } catch (error) {
+        console.error('Error parsing storage change:', error);
       }
-      this.lastSync = currentTime;
-    }
-  }
-
-  handleStorageChange(e) {
-    if (e.newValue !== null) {
-      const parsedData = JSON.parse(e.newValue);
-      sistemaReservas.reservas = parsedData.map(r => {
-        const reserva = new Reserva(
-          r.nombreCliente,
-          r.telefonoCliente,
-          r.fechaHora,
-          r.duracion,
-          r.recursos,
-          r.observaciones,
-          r.isCanceled
-        );
-        
-        reserva.tour = r.tour;
-        reserva.numPersonas = r.numPersonas;
-        reserva.costoTotal = r.costoTotal;
-        reserva.anticipo = r.anticipo;
-        reserva.metodoPago = r.metodoPago;
-        reserva.vendedor = r.vendedor;
-        reserva.receptorPago = r.receptorPago;
-        
-        return reserva;
-      });
-      renderizarReservasGuardadas();
     }
   }
 }
@@ -619,7 +643,14 @@ class SistemaReservas {
   }
 
   guardarReservas() {
-    localStorage.setItem('reservas', JSON.stringify(this.reservas));
+    try {
+      localStorage.setItem('reservas', JSON.stringify(this.reservas));
+      // Dispatch custom event for same-tab updates
+      window.dispatchEvent(new Event('localStorageUpdated'));
+    } catch (error) {
+      console.error('Error saving reservations:', error);
+      alert('Error al guardar las reservas. Por favor intente nuevamente.');
+    }
   }
 
   agregarReserva(reserva) {
