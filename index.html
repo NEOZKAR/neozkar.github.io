@@ -529,27 +529,38 @@ class ConnectionManager {
 
 class RealtimeManager {
   constructor() {
-    this.syncInterval = 1000; // Check every second
+    this.syncInterval = 1000;
     this.lastSync = Date.now();
     this.setupSync();
     this.setupStorageListener();
-    this.setupWebSocket(); // Add WebSocket support for real-time updates
+    this.setupWebSocket();
   }
 
   setupWebSocket() {
-    if (!window.WebSocket) {
-      console.log('WebSocket not supported, using localStorage sync');
-      return;
-    }
-
     try {
-      this.ws = new WebSocket('wss://your-websocket-server.com');
+      this.ws = new WebSocket('wss://your-websocket-server.com/sales');
       
+      this.ws.onopen = () => {
+        console.log('WebSocket connected');
+        this.ws.send(JSON.stringify({
+          type: 'sync_request',
+          timestamp: Date.now()
+        }));
+      };
+
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === 'reservas_update') {
-            this.handleRemoteUpdate(data.reservas);
+          switch(data.type) {
+            case 'reservas_update':
+              this.handleRemoteUpdate(data.reservas);
+              break;
+            case 'sync_response':
+              this.handleSyncResponse(data.reservas);
+              break;
+            case 'new_reserva':
+              this.handleNewReserva(data.reserva);
+              break;
           }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
@@ -560,9 +571,21 @@ class RealtimeManager {
         console.log('WebSocket connection closed, falling back to localStorage sync');
         setTimeout(() => this.setupWebSocket(), 5000);
       };
+
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        this.fallbackToLocalStorage();
+      };
     } catch (error) {
-      console.error('WebSocket connection failed:', error);
+      console.error('WebSocket setup failed:', error);
+      this.fallbackToLocalStorage();
     }
+  }
+
+  fallbackToLocalStorage() {
+    console.log('Using localStorage fallback for synchronization');
+    this.syncInterval = 500;
+    this.setupSync();
   }
 
   setupSync() {
@@ -579,11 +602,20 @@ class RealtimeManager {
     window.addEventListener('localStorageUpdated', () => {
       this.syncData();
     });
+
+    window.addEventListener('beforeunload', () => {
+      this.syncData(true);
+    });
   }
 
   handleRemoteUpdate(reservas) {
     try {
-      sistemaReservas.reservas = reservas.map(r => {
+      if (!Array.isArray(reservas)) {
+        console.error('Invalid reservas data received');
+        return;
+      }
+
+      const parsedReservas = reservas.map(r => {
         const reserva = new Reserva(
           r.nombreCliente,
           r.telefonoCliente,
@@ -607,26 +639,59 @@ class RealtimeManager {
         return reserva;
       });
       
+      sistemaReservas.reservas = parsedReservas;
+      localStorage.setItem('reservas', JSON.stringify(parsedReservas));
       renderizarReservasGuardadas();
     } catch (error) {
       console.error('Error handling remote update:', error);
     }
   }
 
-  syncData() {
+  handleNewReserva(reserva) {
+    try {
+      const newReserva = new Reserva(
+        reserva.nombreCliente,
+        reserva.telefonoCliente,
+        reserva.fechaHora,
+        reserva.duracion,
+        reserva.recursos,
+        reserva.observaciones,
+        reserva.isCanceled
+      );
+      
+      Object.assign(newReserva, {
+        tour: reserva.tour,
+        numPersonas: reserva.numPersonas,
+        costoTotal: reserva.costoTotal,
+        anticipo: reserva.anticipo,
+        metodoPago: reserva.metodoPago,
+        vendedor: reserva.vendedor,
+        receptorPago: reserva.receptorPago
+      });
+
+      sistemaReservas.agregarReserva(newReserva);
+      renderizarReservasGuardadas();
+    } catch (error) {
+      console.error('Error handling new reserva:', error);
+    }
+  }
+
+  syncData(force = false) {
     const currentTime = Date.now();
-    if (currentTime - this.lastSync >= this.syncInterval) {
+    if (force || currentTime - this.lastSync >= this.syncInterval) {
       try {
         const storedData = localStorage.getItem('reservas');
         if (storedData) {
           const parsedData = JSON.parse(storedData);
-          this.handleRemoteUpdate(parsedData);
           
           if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify({
               type: 'reservas_update',
-              reservas: parsedData
+              reservas: parsedData,
+              timestamp: currentTime
             }));
+          } else {
+            this.handleRemoteUpdate(parsedData);
           }
         }
       } catch (error) {
@@ -692,7 +757,8 @@ class SistemaReservas {
           window.realtimeManager.ws.readyState === WebSocket.OPEN) {
         window.realtimeManager.ws.send(JSON.stringify({
           type: 'reservas_update',
-          reservas: this.reservas
+          reservas: this.reservas,
+          timestamp: Date.now()
         }));
       }
     } catch (error) {
@@ -1094,14 +1160,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     try {
-      const response = await guardarVenta(nuevaReserva);
-      if (response.success) {
-        await cargarVentas();
-        document.getElementById('limpiarFormulario').click();
-        alert('Venta registrada exitosamente');
-      } else {
-        throw new Error(response.error);
-      }
+      sistemaReservas.guardarReservas();
+      renderizarReservasGuardadas();
+      
+      document.getElementById('limpiarFormulario').click();
+      
+      alert('Venta registrada exitosamente');
     } catch (error) {
       console.error('Error al guardar la venta:', error);
       alert('Error al guardar la venta. Por favor intente nuevamente.');
@@ -1256,29 +1320,16 @@ function deleteSelectedVentas() {
   }
   
   if (confirm(`¿Está seguro que desea eliminar ${selectedIndices.size} registro(s)?`)) {
-    const idsToDelete = Array.from(selectedIndices);
+    const indicesToDelete = Array.from(selectedIndices).sort((a, b) => b - a);
     
-    fetch('api.php', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        action: 'delete',
-        ids: JSON.stringify(idsToDelete)
-      })
-    }).then(response => response.json()).then(data => {
-      if (data.success) {
-        selectedIndices.clear();
-        sistemaReservas.guardarReservas();
-        renderizarReservasGuardadas();
-        toggleDeleteMode();
-      } else {
-        alert('Error al eliminar registros: ' + data.error);
-      }
-    }).catch(error => {
-      console.error('Error al eliminar ventas:', error);
+    indicesToDelete.forEach(index => {
+      sistemaReservas.reservas.splice(index, 1);
     });
+    
+    selectedIndices.clear();
+    sistemaReservas.guardarReservas();
+    renderizarReservasGuardadas();
+    toggleDeleteMode();
   }
 }
 
