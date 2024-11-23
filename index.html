@@ -1094,12 +1094,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     try {
-      sistemaReservas.guardarReservas();
-      renderizarReservasGuardadas();
-      
-      document.getElementById('limpiarFormulario').click();
-      
-      alert('Venta registrada exitosamente');
+      const response = await guardarVenta(nuevaReserva);
+      if (response.success) {
+        await cargarVentas();
+        document.getElementById('limpiarFormulario').click();
+        alert('Venta registrada exitosamente');
+      } else {
+        throw new Error(response.error);
+      }
     } catch (error) {
       console.error('Error al guardar la venta:', error);
       alert('Error al guardar la venta. Por favor intente nuevamente.');
@@ -1254,16 +1256,29 @@ function deleteSelectedVentas() {
   }
   
   if (confirm(`¿Está seguro que desea eliminar ${selectedIndices.size} registro(s)?`)) {
-    const indicesToDelete = Array.from(selectedIndices).sort((a, b) => b - a);
+    const idsToDelete = Array.from(selectedIndices);
     
-    indicesToDelete.forEach(index => {
-      sistemaReservas.reservas.splice(index, 1);
+    fetch('api.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'delete',
+        ids: JSON.stringify(idsToDelete)
+      })
+    }).then(response => response.json()).then(data => {
+      if (data.success) {
+        selectedIndices.clear();
+        sistemaReservas.guardarReservas();
+        renderizarReservasGuardadas();
+        toggleDeleteMode();
+      } else {
+        alert('Error al eliminar registros: ' + data.error);
+      }
+    }).catch(error => {
+      console.error('Error al eliminar ventas:', error);
     });
-    
-    selectedIndices.clear();
-    sistemaReservas.guardarReservas();
-    renderizarReservasGuardadas();
-    toggleDeleteMode();
   }
 }
 
