@@ -529,186 +529,167 @@ class ConnectionManager {
 
 class RealtimeManager {
   constructor() {
-    this.syncInterval = 1000;
-    this.lastSync = Date.now();
-    this.setupSync();
-    this.setupStorageListener();
+    this.ws = null;
+    this.clientId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.init();
+  }
+
+  init() {
     this.setupWebSocket();
+    this.setupStorageListener();
+    this.setupOfflineSupport();
   }
 
   setupWebSocket() {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.hostname}:8080`;
+
     try {
-      this.ws = new WebSocket('wss://your-websocket-server.com/sales');
+      this.ws = new WebSocket(wsUrl);
       
       this.ws.onopen = () => {
         console.log('WebSocket connected');
-        this.ws.send(JSON.stringify({
-          type: 'sync_request',
-          timestamp: Date.now()
-        }));
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          switch(data.type) {
-            case 'reservas_update':
-              this.handleRemoteUpdate(data.reservas);
-              break;
-            case 'sync_response':
-              this.handleSyncResponse(data.reservas);
-              break;
-            case 'new_reserva':
-              this.handleNewReserva(data.reserva);
-              break;
-          }
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
-        }
+        this.reconnectAttempts = 0;
+        this.syncData();
       };
 
       this.ws.onclose = () => {
-        console.log('WebSocket connection closed, falling back to localStorage sync');
-        setTimeout(() => this.setupWebSocket(), 5000);
+        console.log('WebSocket disconnected');
+        this.handleDisconnection();
       };
 
       this.ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         this.fallbackToLocalStorage();
       };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleIncomingMessage(data);
+        } catch (error) {
+          console.error('Error processing message:', error);
+        }
+      };
     } catch (error) {
-      console.error('WebSocket setup failed:', error);
+      console.error('Error setting up WebSocket:', error);
+      this.fallbackToLocalStorage();
+    }
+  }
+
+  setupStorageListener() {
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'reservas') {
+        try {
+          const newData = JSON.parse(event.newValue);
+          if (newData && Array.isArray(newData)) {
+            sistemaReservas.reservas = this.parseReservas(newData);
+            renderizarReservasGuardadas();
+          }
+        } catch (error) {
+          console.error('Error processing storage event:', error);
+        }
+      }
+    });
+  }
+
+  setupOfflineSupport() {
+    window.addEventListener('online', () => {
+      console.log('Connection restored - attempting to reconnect WebSocket');
+      this.setupWebSocket();
+    });
+
+    window.addEventListener('offline', () => {
+      console.log('Connection lost - falling back to localStorage');
+      this.fallbackToLocalStorage();
+    });
+  }
+
+  parseReservas(data) {
+    return data.map(r => {
+      const reserva = new Reserva(
+        r.nombreCliente,
+        r.telefonoCliente,
+        r.fechaHora,
+        r.duracion,
+        r.recursos,
+        r.observaciones,
+        r.isCanceled
+      );
+      Object.assign(reserva, r);
+      return reserva;
+    });
+  }
+
+  syncData() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'sync_request',
+        clientId: this.clientId,
+        timestamp: Date.now()
+      }));
+    }
+  }
+
+  handleIncomingMessage(data) {
+    if (data.clientId === this.clientId) return;
+
+    switch (data.type) {
+      case 'sync_response':
+      case 'update':
+        sistemaReservas.reservas = this.parseReservas(data.reservas);
+        renderizarReservasGuardadas();
+        break;
+      case 'delete':
+        if (Array.isArray(data.indices)) {
+          data.indices.sort((a, b) => b - a).forEach(index => {
+            sistemaReservas.reservas.splice(index, 1);
+          });
+          renderizarReservasGuardadas();
+        }
+        break;
+    }
+  }
+
+  handleDisconnection() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      setTimeout(() => this.setupWebSocket(), 5000);
+    } else {
+      console.log('Max reconnection attempts reached, falling back to localStorage');
       this.fallbackToLocalStorage();
     }
   }
 
   fallbackToLocalStorage() {
-    console.log('Using localStorage fallback for synchronization');
-    this.syncInterval = 500;
-    this.setupSync();
-  }
-
-  setupSync() {
-    setInterval(() => this.syncData(), this.syncInterval);
-  }
-
-  setupStorageListener() {
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'reservas') {
-        this.handleStorageChange(e);
-      }
-    });
-
-    window.addEventListener('localStorageUpdated', () => {
-      this.syncData();
-    });
-
-    window.addEventListener('beforeunload', () => {
-      this.syncData(true);
-    });
-  }
-
-  handleRemoteUpdate(reservas) {
+    console.log('Falling back to localStorage synchronization');
     try {
-      if (!Array.isArray(reservas)) {
-        console.error('Invalid reservas data received');
-        return;
-      }
-
-      const parsedReservas = reservas.map(r => {
-        const reserva = new Reserva(
-          r.nombreCliente,
-          r.telefonoCliente,
-          r.fechaHora,
-          r.duracion,
-          r.recursos,
-          r.observaciones,
-          r.isCanceled
-        );
-        
-        Object.assign(reserva, {
-          tour: r.tour,
-          numPersonas: r.numPersonas,
-          costoTotal: r.costoTotal,
-          anticipo: r.anticipo,
-          metodoPago: r.metodoPago,
-          vendedor: r.vendedor,
-          receptorPago: r.receptorPago
-        });
-        
-        return reserva;
-      });
-      
-      sistemaReservas.reservas = parsedReservas;
-      localStorage.setItem('reservas', JSON.stringify(parsedReservas));
-      renderizarReservasGuardadas();
-    } catch (error) {
-      console.error('Error handling remote update:', error);
-    }
-  }
-
-  handleNewReserva(reserva) {
-    try {
-      const newReserva = new Reserva(
-        reserva.nombreCliente,
-        reserva.telefonoCliente,
-        reserva.fechaHora,
-        reserva.duracion,
-        reserva.recursos,
-        reserva.observaciones,
-        reserva.isCanceled
-      );
-      
-      Object.assign(newReserva, {
-        tour: reserva.tour,
-        numPersonas: reserva.numPersonas,
-        costoTotal: reserva.costoTotal,
-        anticipo: reserva.anticipo,
-        metodoPago: reserva.metodoPago,
-        vendedor: reserva.vendedor,
-        receptorPago: reserva.receptorPago
-      });
-
-      sistemaReservas.agregarReserva(newReserva);
-      renderizarReservasGuardadas();
-    } catch (error) {
-      console.error('Error handling new reserva:', error);
-    }
-  }
-
-  syncData(force = false) {
-    const currentTime = Date.now();
-    if (force || currentTime - this.lastSync >= this.syncInterval) {
-      try {
-        const storedData = localStorage.getItem('reservas');
-        if (storedData) {
-          const parsedData = JSON.parse(storedData);
-          
-          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-              type: 'reservas_update',
-              reservas: parsedData,
-              timestamp: currentTime
-            }));
-          } else {
-            this.handleRemoteUpdate(parsedData);
-          }
+      const storedData = localStorage.getItem('reservas');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        if (Array.isArray(parsedData)) {
+          sistemaReservas.reservas = this.parseReservas(parsedData);
+          renderizarReservasGuardadas();
         }
-      } catch (error) {
-        console.error('Error during sync:', error);
       }
-      this.lastSync = currentTime;
+    } catch (error) {
+      console.error('Error falling back to localStorage:', error);
     }
   }
 
-  handleStorageChange(e) {
-    if (e.newValue !== null) {
-      try {
-        const parsedData = JSON.parse(e.newValue);
-        this.handleRemoteUpdate(parsedData);
-      } catch (error) {
-        console.error('Error handling storage change:', error);
-      }
+  broadcast(type, payload) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type,
+        clientId: this.clientId,
+        timestamp: Date.now(),
+        ...payload
+      }));
+    } else {
+      this.fallbackToLocalStorage();
     }
   }
 }
@@ -716,6 +697,7 @@ class RealtimeManager {
 class SistemaReservas {
   constructor() {
     this.reservas = this.cargarReservas();
+    this.realtimeManager = new RealtimeManager();
   }
 
   cargarReservas() {
@@ -747,23 +729,15 @@ class SistemaReservas {
 
   guardarReservas() {
     try {
-      const data = JSON.stringify(this.reservas);
-      localStorage.setItem('reservas', data);
+      localStorage.setItem('reservas', JSON.stringify(this.reservas));
       
-      window.dispatchEvent(new Event('localStorageUpdated'));
-      
-      if (window.realtimeManager && 
-          window.realtimeManager.ws && 
-          window.realtimeManager.ws.readyState === WebSocket.OPEN) {
-        window.realtimeManager.ws.send(JSON.stringify({
-          type: 'reservas_update',
-          reservas: this.reservas,
-          timestamp: Date.now()
-        }));
+      if (this.realtimeManager) {
+        this.realtimeManager.broadcast('update', {
+          reservas: this.reservas
+        });
       }
     } catch (error) {
       console.error('Error saving reservations:', error);
-      alert('Error al guardar las reservas. Por favor intente nuevamente.');
     }
   }
 
@@ -1194,14 +1168,6 @@ document.addEventListener('DOMContentLoaded', function() {
   if(eliminarVentasBtn) {
     eliminarVentasBtn.addEventListener('click', deleteSelectedVentas);
   }
-  
-  if(exportarPDFBtn) {
-    exportarPDFBtn.addEventListener('click', exportarAPDF);
-  }
-  
-  if(exportarExcelBtn) {
-    exportarExcelBtn.addEventListener('click', exportarAExcel);
-  }
 
   initializeSelectors();
   actualizarDisponibilidad();
@@ -1220,12 +1186,19 @@ function renderizarReservasGuardadas() {
 
   sistemaReservas.reservas.forEach((reserva, index) => {
     const row = tabla.insertRow();
-    const checkboxCell = row.insertCell(0);
-    checkboxCell.style.display = deleteMode ? 'table-cell' : 'none';
     
-    const isChecked = selectedIndices.has(index) ? 'checked' : '';
-    checkboxCell.innerHTML = `<input type="checkbox" class="venta-checkbox" data-index="${index}" ${isChecked}>`;
-    
+    if (deleteMode) {
+      const checkboxCell = row.insertCell(0);
+      const isChecked = selectedIndices.has(index) ? 'checked' : '';
+      checkboxCell.innerHTML = `
+        <input type="checkbox" 
+               class="venta-checkbox" 
+               data-index="${index}" 
+               ${isChecked}
+               onchange="handleCheckboxChange(this, ${index})">
+      `;
+    }
+
     const tourDisplayNames = {
       'Cabalgata': 'Cabalgata (1.5 hrs)',
       'Cuatrimotos': 'Cuatrimotos (1.5 hrs)',
@@ -1255,18 +1228,21 @@ function renderizarReservasGuardadas() {
       </td>
     `;
   });
+}
 
-  document.querySelectorAll('.venta-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', function(e) {
-      const index = parseInt(this.dataset.index);
-      if (this.checked) {
-        selectedIndices.add(index);
-      } else {
-        selectedIndices.delete(index);
-      }
-      e.stopPropagation();
-    });
-  });
+function handleCheckboxChange(checkbox, index) {
+  if (checkbox.checked) {
+    selectedIndices.add(index);
+  } else {
+    selectedIndices.delete(index);
+  }
+  
+  const selectAllCheckbox = document.getElementById('selectAllVentas');
+  if (selectAllCheckbox) {
+    const allCheckboxes = document.querySelectorAll('.venta-checkbox');
+    const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+    selectAllCheckbox.checked = allChecked;
+  }
 }
 
 function getTourStatus(fechaHora, duracion, isCanceled = false) {
@@ -1286,31 +1262,33 @@ function toggleDeleteMode() {
   const checkboxCells = document.querySelectorAll('#ventasTable td:first-child, #ventasTable th:first-child');
   const deleteBtn = document.getElementById('eliminarVentas');
   const toggleBtn = document.getElementById('toggleEliminar');
-  const selectAllCheckbox = document.getElementById('selectAllVentas');
   
   checkboxCells.forEach(cell => {
     cell.style.display = deleteMode ? 'table-cell' : 'none';
   });
   
-  if(deleteBtn) {
-    deleteBtn.style.display = deleteMode ? 'inline' : 'none';
+  if (deleteBtn) {
+    deleteBtn.style.display = deleteMode ? 'inline-block' : 'none';
   }
   
-  if(toggleBtn) {
+  if (toggleBtn) {
     toggleBtn.textContent = deleteMode ? 'Cancelar' : 'Eliminar registros';
     toggleBtn.classList.toggle('btn-danger');
     toggleBtn.classList.toggle('btn-warning');
   }
 
-  if(!deleteMode) {
+  if (!deleteMode) {
     selectedIndices.clear();
-    if(selectAllCheckbox) {
+    const selectAllCheckbox = document.getElementById('selectAllVentas');
+    if (selectAllCheckbox) {
       selectAllCheckbox.checked = false;
     }
     document.querySelectorAll('.venta-checkbox').forEach(cb => {
       cb.checked = false;
     });
   }
+
+  renderizarReservasGuardadas();
 }
 
 function deleteSelectedVentas() {
@@ -1323,12 +1301,13 @@ function deleteSelectedVentas() {
     const indicesToDelete = Array.from(selectedIndices).sort((a, b) => b - a);
     
     indicesToDelete.forEach(index => {
-      sistemaReservas.reservas.splice(index, 1);
+      if (index >= 0 && index < sistemaReservas.reservas.length) {
+        sistemaReservas.reservas.splice(index, 1);
+      }
     });
     
     selectedIndices.clear();
     sistemaReservas.guardarReservas();
-    renderizarReservasGuardadas();
     toggleDeleteMode();
   }
 }
