@@ -1,19 +1,12 @@
 <html><head><base href="." />
-<title>XTREME ADVENTURE - Sistema de Ventas</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Xtreme Adventure - Sistema de Ventas</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.8.4/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.8.4/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <style>
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 20px;
     background-color: #f8f9fa;
-    font-size: 14px;
-    line-height: 1.4;
   }
 
   .header {
@@ -52,176 +45,13 @@
   }
 
   .availability-info {
-    font-size: 0.85em;
+    font-size: 0.9em;
+    margin-top: 5px;
     color: #666;
-    margin-left: 25px;
-    margin-top: 2px;
-    font-style: italic;
   }
 
   .unavailable {
     background-color: #ffe6e6;
-  }
-
-  .status-indicator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 10px;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 5px 15px;
-    border-radius: 20px;
-    width: fit-content;
-    margin: 10px auto 0;
-  }
-
-  .status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-  }
-
-  .status-dot.online {
-    background-color: #28a745;
-    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
-  }
-
-  .status-dot.offline {
-    background-color: #dc3545;
-    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
-  }
-
-  .status-text {
-    color: white;
-    font-size: 0.9em;
-  }
-
-  @media (max-width: 768px) {
-    .container {
-      padding: 10px;
-      margin: 0;
-    }
-
-    .header {
-      padding: 15px;
-      margin-bottom: 20px;
-    }
-
-    .form-container {
-      padding: 15px;
-    }
-
-    .row {
-      margin: 0;
-    }
-
-    .col-md-3, .col-md-4, .col-md-6 {
-      padding: 5px;
-    }
-
-    .btn {
-      width: 100%;
-      margin: 5px 0;
-    }
-
-    .table-responsive {
-      border: none;
-    }
-
-    .table {
-      font-size: 0.85em;
-    }
-
-    .text-center .btn {
-      display: block;
-      margin: 10px auto;
-    }
-
-    .mb-3 {
-      margin-bottom: 1rem !important;
-    }
-
-    input, select, textarea {
-      font-size: 16px !important;
-      padding: 10px !important;
-    }
-
-    .status-indicator {
-      width: 90%;
-      margin: 10px auto;
-      padding: 8px;
-    }
-
-    .table-responsive {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .form-container .row > [class*='col-'] {
-      width: 100%;
-      margin-bottom: 15px;
-    }
-
-    .modal-dialog {
-      margin: 10px;
-      width: auto;
-    }
-
-    .modal-content {
-      padding: 10px;
-    }
-
-    .form-check {
-      padding: 10px 0;
-    }
-
-    .form-check-input {
-      width: 20px;
-      height: 20px;
-      margin-right: 10px;
-    }
-
-    h1 {
-      font-size: 1.8em;
-    }
-
-    h4 {
-      font-size: 1.2em;
-    }
-  }
-
-  #vehiculosDisponibles .form-check {
-    margin-bottom: 10px;
-    padding: 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-  }
-
-  #vehiculosDisponibles .form-check:hover {
-    background-color: #f8f9fa;
-  }
-
-  #vehiculosDisponibles .form-check.resource-unavailable {
-    color: #dc3545;
-    background-color: #ffe6e6;
-  }
-
-  #vehiculosDisponibles .form-check.resource-available {
-    color: #198754;
-  }
-
-  #guiasDisponibles .form-check {
-    margin-bottom: 15px;
-    padding: 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-  }
-
-  #guiasDisponibles .form-check.resource-unavailable {
-    background-color: #ffe6e6;
-    padding-bottom: 12px;
   }
 </style>
 </head>
@@ -229,12 +59,8 @@
 
 <div class="container">
   <div class="header text-center">
-    <h1>XTREME ADVENTURE</h1>
-    <h4>Sistema de Ventas 2.0</h4>
-    <div class="status-indicator">
-      <span class="status-dot"></span>
-      <span class="status-text">Verificando conexión...</span>
-    </div>
+    <h1>Xtreme Adventure</h1>
+    <h4>Sistema de Registro de Ventas</h4>
   </div>
 
   <div class="form-container">
@@ -303,10 +129,6 @@
                 <input class="form-check-input" type="checkbox" value="Sentra" id="vehiculo-sentra">
                 <label class="form-check-label" for="vehiculo-sentra">Sentra</label>
               </div>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="Taxi" id="vehiculo-taxi">
-                <label class="form-check-label" for="vehiculo-taxi">Taxi</label>
-              </div>
             </div>
           </div>
         </div>
@@ -345,16 +167,18 @@
           <label class="form-label">Vendedor</label>
           <select class="form-select" id="vendedor" required>
             <option value="">Seleccione vendedor</option>
+            <!-- Lista de vendedores -->
           </select>
         </div>
         <div class="col-md-4">
           <label class="form-label">Persona que recibió el pago</label>
           <select class="form-select" id="receptorPago" required>
             <option value="">Seleccione receptor</option>
+            <!-- Lista de receptores -->
           </select>
         </div>
         <div class="col-md-4">
-          <label class="form-label">Guías Disponibles</label>
+          <label class="form-label">Guía para el tour</label>
           <div id="guiasDisponibles">
             <!-- Will be populated dynamically -->
           </div>
@@ -377,17 +201,14 @@
   </div>
 
   <div class="mt-4">
-    <button id="exportarPDF" class="btn btn-danger mb-3 ms-2">
-      <i class="fas fa-file-pdf"></i> Exportar a PDF
-    </button>
-    <button id="exportarExcel" class="btn btn-success mb-3 ms-2">
-      <i class="fas fa-download"></i> Descargar Registro en Excel
+    <button id="exportExcel" class="btn btn-success mb-3">
+      Exportar a Excel
     </button>
     <button id="eliminarVentas" class="btn btn-danger mb-3 ms-2" style="display:none;">
       Eliminar Seleccionados
     </button>
     <button id="toggleEliminar" class="btn btn-warning mb-3 ms-2">
-      Eliminar registros
+      Modo Eliminar
     </button>
 
     <h3>Registro de Ventas</h3>
@@ -395,18 +216,17 @@
       <table class="table table-striped" id="ventasTable">
         <thead>
           <tr>
-            <th style="display:none"><input type="checkbox" id="selectAllVentas"> Seleccionar</th>
-            <th>Fecha</th>
-            <th>Hora</th>
+            <th><input type="checkbox" id="selectAllVentas"> Seleccionar</th>
+            <th>Fecha/Hora</th>
             <th>Cliente</th>
             <th>Tour</th>
             <th>Guía(s)</th>
-            <th>Vehículo</th>
-            <th>Cuatrimoto</th>
+            <th>Vehículo/Cuatrimoto</th>
             <th>Total</th>
             <th>Estado</th>
             <th>Vendedor</th>
-            <th>Observaciones/Motivo de cancelación</th>
+            <th>Próxima Disponibilidad</th>
+            <th>Observaciones</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -441,9 +261,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-let deleteMode = false;
-let selectedIndices = new Set();
-
 const DURACIONES = {
   'Cabalgata': 90,
   'Cuatrimotos': 90,
@@ -453,145 +270,32 @@ const DURACIONES = {
   'RutasLargas': 180
 };
 
+let deleteMode = false;
+
 class Reserva {
   constructor(nombreCliente, telefonoCliente, fechaHora, duracion, recursos, observaciones, isCanceled = false) {
     this.nombreCliente = nombreCliente;
-    this.telefonoCliente = telefonoCliente; 
-    this.fechaHora = fechaHora;
+    this.telefonoCliente = telefonoCliente;
+    this.fechaHora = new Date(fechaHora);
     this.duracion = duracion;
     this.recursos = recursos;
     this.observaciones = observaciones;
     this.isCanceled = isCanceled;
-    
-    this.tour = null;
-    this.numPersonas = null;
-    this.costoTotal = null;
-    this.anticipo = null;
-    this.metodoPago = null;
-    this.vendedor = null;
-    this.receptorPago = null;
-  }
-
-  toJSON() {
-    return {
-      nombreCliente: this.nombreCliente,
-      telefonoCliente: this.telefonoCliente,
-      fechaHora: this.fechaHora,
-      duracion: this.duracion,
-      recursos: this.recursos,
-      observaciones: this.observaciones,
-      isCanceled: this.isCanceled,
-      tour: this.tour,
-      numPersonas: this.numPersonas,
-      costoTotal: this.costoTotal,
-      anticipo: this.anticipo,
-      metodoPago: this.metodoPago,
-      vendedor: this.vendedor,
-      receptorPago: this.receptorPago
-    };
-  }
-}
-
-class FirebaseManager {
-  constructor() {
-    try {
-      // Firebase configuration
-      const firebaseConfig = {
-        apiKey: "AIzaSyD3aB0UGQc9cDxn4SsBKpEZn8S1x6eEWxQ",
-        authDomain: "xtreme-adventure-sales.firebaseapp.com", 
-        databaseURL: "https://xtreme-adventure-sales-default-rtdb.firebaseio.com",
-        projectId: "xtreme-adventure-sales",
-        storageBucket: "xtreme-adventure-sales.appspot.com",
-        messagingSenderId: "558082141442",
-        appId: "1:558082141442:web:8dd4502d521cd226bc9e2b"
-      };
-
-      // Initialize Firebase
-      const app = firebase.initializeApp(firebaseConfig);
-      this.database = firebase.database();
-      this.salesRef = this.database.ref('sales');
-      
-      // Setup realtime listener
-      this.salesRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          sistemaReservas.reservas = Object.values(data).map(r => {
-            const reserva = new Reserva(
-              r.nombreCliente,
-              r.telefonoCliente,
-              r.fechaHora,
-              r.duracion,
-              r.recursos,
-              r.observaciones,
-              r.isCanceled
-            );
-            Object.assign(reserva, r);
-            return reserva;
-          });
-          renderizarReservasGuardadas();
-        }
-      }, (error) => {
-        console.error("Firebase sync error:", error);
-        this.fallbackToLocalStorage();
-      });
-
-    } catch (error) {
-      console.error("Firebase initialization error:", error);
-      this.fallbackToLocalStorage();
-    }
-  }
-
-  fallbackToLocalStorage() {
-    console.log("Falling back to localStorage");
-    this.database = null;
-    this.useLocalStorage = true;
-  }
-
-  updateSales(reservas) {
-    if (this.database) {
-      this.salesRef.set(reservas)
-        .catch(error => {
-          console.error("Firebase update error:", error);
-          if (this.useLocalStorage) {
-            localStorage.setItem('reservas', JSON.stringify(reservas));
-          }
-        });
-    } else if (this.useLocalStorage) {
-      localStorage.setItem('reservas', JSON.stringify(reservas));
-    }
-  }
-
-  deleteSales(indices) {
-    if (this.database) {
-      const updates = {};
-      indices.forEach(index => {
-        updates[`/${index}`] = null;
-      });
-      this.salesRef.update(updates)
-        .catch(error => {
-          console.error("Firebase delete error:", error);
-        });
-    }
+    this.fechaFin = new Date(this.fechaHora.getTime() + duracion * 60000);
   }
 }
 
 class SistemaReservas {
   constructor() {
-    try {
-      this.firebaseManager = new FirebaseManager();
-      this.reservas = this.cargarReservas();
-    } catch (error) {
-      console.error('SistemaReservas initialization error:', error);
-      this.reservas = [];
-    }
+    this.reservas = this.cargarReservas();
   }
-  
+
   cargarReservas() {
     const reservasGuardadas = localStorage.getItem('reservas');
     if (!reservasGuardadas) return [];
 
     return JSON.parse(reservasGuardadas).map(r => {
-      const reserva = new Reserva(
+      return new Reserva(
         r.nombreCliente,
         r.telefonoCliente,
         r.fechaHora,
@@ -600,28 +304,11 @@ class SistemaReservas {
         r.observaciones,
         r.isCanceled
       );
-      
-      reserva.tour = r.tour;
-      reserva.numPersonas = r.numPersonas;
-      reserva.costoTotal = r.costoTotal;
-      reserva.anticipo = r.anticipo;
-      reserva.metodoPago = r.metodoPago;
-      reserva.vendedor = r.vendedor;
-      reserva.receptorPago = r.receptorPago;
-      
-      return reserva;
     });
   }
 
   guardarReservas() {
-    try {
-      localStorage.setItem('reservas', JSON.stringify(this.reservas));
-      if (this.firebaseManager) {
-        this.firebaseManager.updateSales(this.reservas);
-      }
-    } catch (error) {
-      console.error('Error saving reservations:', error);
-    }
+    localStorage.setItem('reservas', JSON.stringify(this.reservas));
   }
 
   agregarReserva(reserva) {
@@ -640,505 +327,138 @@ class SistemaReservas {
     const inicio = new Date(fechaHora);
     const fin = new Date(inicio.getTime() + duracion * 60000);
 
-    if (recurso.match(/^(Alberto C|Ana R|Ángel|Erick V|Iván J|Joaquín L|Luis A|Toño P|Otro)$/)) {
-        const tourSelect = document.getElementById('tour');
-        const isAtvTour = ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(tourSelect.value);
-        
-        if (isAtvTour) {
-            let guideCount = 0;
-            this.reservas.forEach(reserva => {
-                if (reserva.isCanceled) return false;
-                
-                const reservaInicio = new Date(reserva.fechaHora);
-                const reservaFin = new Date(reservaInicio.getTime() + reserva.duracion * 60000);
-                const hayConflicto = (inicio < reservaFin && fin > reservaInicio);
-                
-                if (hayConflicto && 
-                    ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(reserva.tour) && 
-                    reserva.recursos.includes(recurso)) {
-                    guideCount++;
-                }
-            });
-            
-            return guideCount < 3;
-        }
-    }
-
     return !this.reservas.some(reserva => {
-        if (reserva.isCanceled) return false;
+      if (reserva.isCanceled) return false;
 
-        const reservaInicio = new Date(reserva.fechaHora);
-        const reservaFin = new Date(reservaInicio.getTime() + reserva.duracion * 60000);
+      const reservaInicio = new Date(reserva.fechaHora);
+      const reservaFin = new Date(reservaInicio.getTime() + reserva.duracion * 60000);
 
-        const hayConflicto = (inicio < reservaFin && fin > reservaInicio);
-        return hayConflicto && reserva.recursos.includes(recurso);
+      const hayConflicto = (inicio < reservaFin && fin > reservaInicio);
+      return hayConflicto && reserva.recursos.includes(recurso);
     });
-  }
-
-  getNextAvailability(recurso, fechaHora) {
-    const reservasRecurso = this.reservas
-      .filter(r => !r.isCanceled && r.recursos.includes(recurso))
-      .sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora));
-
-    const fechaInicio = new Date(fechaHora);
-    
-    for (let reserva of reservasRecurso) {
-      const reservaFin = new Date(reserva.fechaHora);
-      reservaFin.setMinutes(reservaFin.getMinutes() + reserva.duracion);
-      
-      if (reservaFin > fechaInicio) {
-        return reservaFin;
-      }
-    }
-    
-    return fechaInicio;
   }
 }
 
 const sistemaReservas = new SistemaReservas();
 
 function formatearFecha(fecha) {
-  if (!fecha) return 'N/A';
-  return new Date(fecha).toLocaleString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  return new Date(fecha).toLocaleString();
 }
 
-function actualizarDisponibilidad() {
-  const fechaHoraInput = document.getElementById('fechaHora');
-  const tourSelect = document.getElementById('tour');
-  
-  if (!fechaHoraInput?.value || !tourSelect?.value) return;
-
-  const fechaHora = fechaHoraInput.value;
-  const tour = tourSelect.value;
-  const duracion = DURACIONES[tour];
-  const isAtvTour = ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(tour);
-
-  const guiasCheckboxes = document.querySelectorAll('#guiasDisponibles input[type="checkbox"]');
-  guiasCheckboxes.forEach(checkbox => {
-    const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
-    checkbox.disabled = !disponible;
-    const label = checkbox.parentElement;
-    if (label) {
-      const existingInfo = label.querySelector('.availability-info');
-      if (existingInfo) {
-        existingInfo.remove();
-      }
-
-      label.classList.toggle('resource-unavailable', !disponible);
-      label.classList.toggle('resource-available', disponible);
-      
-      if (!disponible) {
-        const nextAvailable = sistemaReservas.getNextAvailability(checkbox.value, fechaHora);
-        const availabilityInfo = document.createElement('div');
-        availabilityInfo.className = 'availability-info';
-        availabilityInfo.textContent = `Próxima disponibilidad: ${formatearFecha(nextAvailable)}`;
-        label.appendChild(availabilityInfo);
-      } else if (isAtvTour) {
-        let count = 0;
-        sistemaReservas.reservas.forEach(reserva => {
-          const reservaInicio = new Date(reserva.fechaHora);
-          const reservaFin = new Date(reservaInicio.getTime() + reserva.duracion * 60000);
-          const inicio = new Date(fechaHora);
-          const fin = new Date(inicio.getTime() + duracion * 60000);
-          
-          if (!reserva.isCanceled && 
-              (inicio < reservaFin && fin > reservaInicio) && 
-              ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(reserva.tour) && 
-              reserva.recursos.includes(checkbox.value)) {
-            count++;
-          }
-        });
-        
-        if (count > 0) {
-          const availabilityInfo = document.createElement('div');
-          availabilityInfo.className = 'availability-info';
-          availabilityInfo.textContent = `Asignaciones de cuatrimoto: ${count}/3`;
-          label.appendChild(availabilityInfo);
-        }
-      }
-    }
-  });
-
-  const showVehicles = ['ReservaVenados', 'TunelesVolcanicos', 'MixtoVenados'].includes(tour);
-  const showCuatrimotos = tour === 'Cuatrimotos' || tour === 'RutasLargas' || tour === 'MixtoVenados';
-
-  document.getElementById('vehiculoSection').style.display = showVehicles ? 'block' : 'none';
-  document.getElementById('cuatrimotosSection').style.display = showCuatrimotos ? 'block' : 'none';
-
-  if (showVehicles) {
-    const vehiculosCheckboxes = document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"]');
-    vehiculosCheckboxes.forEach(checkbox => {
-      const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
-      checkbox.disabled = !disponible;
-      const label = checkbox.parentElement;
-      if (label) {
-        label.classList.toggle('resource-unavailable', !disponible);
-        label.classList.toggle('resource-available', disponible);
-        
-        if (!disponible) {
-          const nextAvailable = sistemaReservas.getNextAvailability(checkbox.value, fechaHora);
-          const availabilityInfo = document.createElement('div');
-          availabilityInfo.className = 'availability-info';
-          availabilityInfo.textContent = `Próxima disponibilidad: ${formatearFecha(nextAvailable)}`;
-          label.appendChild(availabilityInfo);
-        }
-      }
-    });
-  }
-
-  if (showCuatrimotos) {
-    const cuatrimotosCheckboxes = document.querySelectorAll('#cuatrimotosDisponibles input[type="checkbox"]');
-    cuatrimotosCheckboxes.forEach(checkbox => {
-      const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
-      checkbox.disabled = !disponible;
-      const label = checkbox.parentElement;
-      if (label) {
-        label.classList.toggle('resource-unavailable', !disponible);
-        label.classList.toggle('resource-available', disponible);
-        
-        if (!disponible) {
-          const nextAvailable = sistemaReservas.getNextAvailability(checkbox.value, fechaHora);
-          const availabilityInfo = document.createElement('div');
-          availabilityInfo.className = 'availability-info';
-          availabilityInfo.textContent = `Próxima disponibilidad: ${formatearFecha(nextAvailable)}`;
-          label.appendChild(availabilityInfo);
-        }
-      }
-    });
-  }
-}
-
-function editVenta(index) {
-  const venta = sistemaReservas.reservas[index];
-  
-  document.getElementById('nombreCliente').value = venta.nombreCliente;
-  document.getElementById('telefonoCliente').value = venta.telefonoCliente;
-  document.getElementById('fechaHora').value = new Date(venta.fechaHora).toISOString().slice(0,16);
-  document.getElementById('tour').value = venta.tour;
-  document.getElementById('numPersonas').value = venta.numPersonas;
-  document.getElementById('costoTour').value = venta.costoTotal;
-  document.getElementById('anticipo').value = venta.anticipo;
-  document.getElementById('metodoPago').value = venta.metodoPago;
-  document.getElementById('vendedor').value = venta.vendedor;
-  document.getElementById('receptorPago').value = venta.receptorPago;
-  document.getElementById('observaciones').value = venta.observaciones;
-
-  const showVehicles = ['ReservaVenados', 'TunelesVolcanicos', 'MixtoVenados'].includes(venta.tour);
-  const showCuatrimotos = venta.tour === 'Cuatrimotos' || venta.tour === 'RutasLargas' || venta.tour === 'MixtoVenados';
-  
-  document.getElementById('vehiculoSection').style.display = showVehicles ? 'block' : 'none';
-  document.getElementById('cuatrimotosSection').style.display = showCuatrimotos ? 'block' : 'none';
-
-  document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"], #cuatrimotosDisponibles input[type="checkbox"], #guiasDisponibles input[type="checkbox"]')
-    .forEach(checkbox => checkbox.checked = false);
-
-  venta.recursos.forEach(recurso => {
-    const checkbox = document.querySelector(`input[value="${recurso}"]`);
-    if (checkbox) checkbox.checked = true;
-  });
-
-  if (venta.metodoPago === 'Terminal') {
-    document.getElementById('costoTotalContainer').style.display = 'block';
-    document.getElementById('costoTotalPagar').value = venta.costoTotal;
-  } else {
-    document.getElementById('costoTotalContainer').style.display = 'none';
-  }
-
-  const submitBtn = document.querySelector('button[type="submit"]');
-  submitBtn.textContent = 'Actualizar Venta';
-  submitBtn.dataset.editIndex = index;
-
-  document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth' });
-}
-
-function showCancelacionModal(index) {
-  const cancelacionModal = new bootstrap.Modal(document.getElementById('cancelacionModal'));
-  const confirmarBtn = document.getElementById('confirmarCancelacion');
-  
-  confirmarBtn.onclick = function() {
-    const motivo = document.getElementById('motivoCancelacion').value;
-    if (!motivo) {
-      alert('Por favor ingrese un motivo de cancelación');
-      return;
-    }
-    
-    sistemaReservas.cancelarReserva(index);
-    sistemaReservas.reservas[index].observaciones = 
-      (sistemaReservas.reservas[index].observaciones || '') + 
-      '\nCANCELADO - Motivo: ' + motivo;
-    
-    sistemaReservas.guardarReservas();
-    renderizarReservasGuardadas();
-    
-    cancelacionModal.hide();
-    document.getElementById('motivoCancelacion').value = '';
-  };
-  
-  cancelacionModal.show();
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  const sistemaReservas = new SistemaReservas();
-  initializeSelectors();
-  actualizarDisponibilidad();
-  renderizarReservasGuardadas();
-  
-  const costoTourInput = document.getElementById('costoTour');
-  const anticipoInput = document.getElementById('anticipo');
-  const metodoPagoSelect = document.getElementById('metodoPago');
-  const costoTotalContainer = document.getElementById('costoTotalContainer');
-  const costoTotalPagarInput = document.getElementById('costoTotalPagar');
-  const pagoRestanteInput = document.getElementById('pagoRestante');
-  const ventasForm = document.getElementById('ventasForm');
-  const exportarPDFBtn = document.getElementById('exportarPDF');
-  const exportarExcelBtn = document.getElementById('exportarExcel');
-  const eliminarVentasBtn = document.getElementById('eliminarVentas');
-  const toggleEliminarBtn = document.getElementById('toggleEliminar');
-  const selectAllCheckbox = document.getElementById('selectAllVentas');
-  
-  const fechaHoraInput = document.getElementById('fechaHora');
-  const tourSelect = document.getElementById('tour');
-
-  if (fechaHoraInput) {
-    fechaHoraInput.addEventListener('change', actualizarDisponibilidad);
-  }
-  
-  if (tourSelect) {
-    tourSelect.addEventListener('change', actualizarDisponibilidad);
-  }
-
-  if(costoTourInput) {
-    costoTourInput.addEventListener('input', updateRemainingPayment);
-  }
-  
-  if(anticipoInput) {
-    anticipoInput.addEventListener('input', updateRemainingPayment);
-  }
-  
-  if(metodoPagoSelect) {
-    metodoPagoSelect.addEventListener('change', function() {
-      const costoTour = parseFloat(costoTourInput?.value) || 0;
-      
-      if (this.value === 'Terminal') {
-        if(costoTotalPagarInput) costoTotalPagarInput.value = (costoTour * 1.04).toFixed(2);
-        if(costoTotalContainer) costoTotalContainer.style.display = 'block';
-      } else {
-        if(costoTotalContainer) costoTotalContainer.style.display = 'none';
-        if(costoTotalPagarInput) costoTotalPagarInput.value = '';
-      }
-      
-      updateRemainingPayment();
-    });
-  }
-
-  function updateRemainingPayment() {
-    const costoTour = parseFloat(costoTourInput?.value) || 0;
-    const anticipo = parseFloat(anticipoInput?.value) || 0;
-    const metodoPago = metodoPagoSelect?.value;
-    
-    let costoTotal = costoTour;
-    if (metodoPago === 'Terminal') {
-      costoTotal = costoTour * 1.04;
-    }
-    
-    const pagoRestante = costoTotal - anticipo;
-    if(pagoRestanteInput) {
-      pagoRestanteInput.value = pagoRestante.toFixed(2);
-    }
-  }
-
-  ventasForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const nombreCliente = document.getElementById('nombreCliente').value;
-    const telefonoCliente = document.getElementById('telefonoCliente').value;
-    const fechaHora = document.getElementById('fechaHora').value;
-    const tour = document.getElementById('tour').value;
-    const numPersonas = document.getElementById('numPersonas').value;
-    const duracion = DURACIONES[tour];
-    const costoTour = parseFloat(document.getElementById('costoTour').value);
-    const anticipo = parseFloat(document.getElementById('anticipo').value);
-    const metodoPago = document.getElementById('metodoPago').value;
-    const vendedor = document.getElementById('vendedor').value;
-    const receptorPago = document.getElementById('receptorPago').value;
-    const observaciones = document.getElementById('observaciones').value;
-    
-    const guias = Array.from(document.querySelectorAll('#guiasDisponibles input:checked'))
-      .map(input => input.value);
-    
-    const vehiculos = Array.from(document.querySelectorAll('#vehiculosDisponibles input:checked'))
-      .map(input => input.value);
-        
-    const cuatrimotos = Array.from(document.querySelectorAll('#cuatrimotosDisponibles input:checked'))
-      .map(input => input.value);
-    
-    const recursos = [...guias, ...vehiculos, ...cuatrimotos];
-    
-    let costoTotal = costoTour;
-    if (metodoPago === 'Terminal') {
-      costoTotal = costoTour * 1.04;
-    }
-    
-    const nuevaReserva = new Reserva(
-      nombreCliente,
-      telefonoCliente,
-      fechaHora,
-      duracion,
-      recursos,
-      observaciones
-    );
-    
-    nuevaReserva.tour = tour;
-    nuevaReserva.numPersonas = parseInt(numPersonas);
-    nuevaReserva.costoTotal = costoTotal;
-    nuevaReserva.anticipo = anticipo;
-    nuevaReserva.metodoPago = metodoPago;
-    nuevaReserva.vendedor = vendedor;
-    nuevaReserva.receptorPago = receptorPago;
-    
-    const submitBtn = document.querySelector('button[type="submit"]');
-    if (submitBtn.dataset.editIndex) {
-      const index = parseInt(submitBtn.dataset.editIndex);
-      sistemaReservas.reservas[index] = nuevaReserva;
-      delete submitBtn.dataset.editIndex;
-      submitBtn.textContent = 'Registrar Venta';
-    } else {
-      sistemaReservas.agregarReserva(nuevaReserva);
-    }
-    
-    try {
-      sistemaReservas.guardarReservas();
-      renderizarReservasGuardadas();
-      
-      document.getElementById('limpiarFormulario').click();
-      
-      alert('Venta registrada exitosamente');
-    } catch (error) {
-      console.error('Error al guardar la venta:', error);
-      alert('Error al guardar la venta. Por favor intente nuevamente.');
-    }
-  });
-
-  if(selectAllCheckbox) {
-    selectAllCheckbox.addEventListener('change', function() {
-      const checkboxes = document.querySelectorAll('.venta-checkbox');
-      checkboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
-        const index = parseInt(checkbox.dataset.index);
-        if (this.checked) {
-          selectedIndices.add(index);
-        } else {
-          selectedIndices.delete(index);
-        }
-      });
-    });
-  }
-  
-  if(toggleEliminarBtn) {
-    toggleEliminarBtn.addEventListener('click', toggleDeleteMode);
-  }
-  
-  if(eliminarVentasBtn) {
-    eliminarVentasBtn.addEventListener('click', deleteSelectedVentas);
-  }
-
-  initializeSelectors();
-  actualizarDisponibilidad();
-  renderizarReservasGuardadas();
+document.getElementById('exportExcel').addEventListener('click', function() {
+  const tabla = document.getElementById('ventasTable');
+  const wb = XLSX.utils.table_to_book(tabla, {sheet: "Ventas"});
+  XLSX.writeFile(wb, `Ventas_${new Date().toISOString().split('T')[0]}.xlsx`);
 });
 
-// Add status indicator update
-function updateConnectionStatus(online) {
-  const statusDot = document.querySelector('.status-dot');
-  const statusText = document.querySelector('.status-text');
-  
-  if (statusDot && statusText) {
-    statusDot.className = `status-dot ${online ? 'online' : 'offline'}`;
-    statusText.textContent = online ? 'Conectado' : 'Desconectado';
-  }
-}
+document.getElementById('fechaHora').addEventListener('change', function() {
+  actualizarDisponibilidad();
+});
 
-// Add connection monitoring
-window.addEventListener('online', () => updateConnectionStatus(true));
-window.addEventListener('offline', () => updateConnectionStatus(false));
-updateConnectionStatus(navigator.onLine);
+function actualizarDisponibilidad() {
+  const fechaHora = document.getElementById('fechaHora').value;
+  const tour = document.getElementById('tour').value;
+  if (!fechaHora || !tour) return;
 
-function renderizarReservasGuardadas() {
-  const tabla = document.getElementById('ventasTable').getElementsByTagName('tbody')[0];
-  tabla.innerHTML = '';
-  
-  const headerRow = document.querySelector('#ventasTable thead tr');
-  const observacionesHeader = Array.from(headerRow.cells).find(cell => cell.textContent === 'Observaciones');
-  if (observacionesHeader) {
-    observacionesHeader.textContent = 'Observaciones/Motivo de cancelación';
-  }
+  const duracion = DURACIONES[tour];
 
-  sistemaReservas.reservas.forEach((reserva, index) => {
-    const row = tabla.insertRow();
-    
-    if (deleteMode) {
-      const checkboxCell = row.insertCell(0);
-      const isChecked = selectedIndices.has(index) ? 'checked' : '';
-      checkboxCell.innerHTML = `
-        <input type="checkbox" 
-               class="venta-checkbox" 
-               data-index="${index}" 
-               ${isChecked}
-               onchange="handleCheckboxChange(this, ${index})">
-      `;
-    }
+  // Update vehicle availability
+  document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"]').forEach(checkbox => {
+    const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
+    checkbox.disabled = !disponible;
+    checkbox.parentElement.classList.toggle('resource-disabled', !disponible);
+  });
 
-    const tourDisplayNames = {
-      'Cabalgata': 'Cabalgata (1.5 hrs)',
-      'Cuatrimotos': 'Cuatrimotos (1.5 hrs)',
-      'ReservaVenados': 'Reserva de Venados (1.5 hrs)',
-      'TunelesVolcanicos': 'Túneles Volcánicos (2 hrs)',
-      'MixtoVenados': 'Mixto a Venados (1:40 hrs)',
-      'RutasLargas': 'Rutas Largas (3 hrs)'
-    };
+  // Update cuatrimoto availability 
+  document.querySelectorAll('#cuatrimotosDisponibles input[type="checkbox"]').forEach(checkbox => {
+    const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
+    checkbox.disabled = !disponible;
+    checkbox.parentElement.classList.toggle('resource-disabled', !disponible);
+  });
 
-    const tourDisplayName = tourDisplayNames[reserva.tour] || reserva.tour;
-    
-    row.innerHTML += `
-      <td>${new Date(reserva.fechaHora).toLocaleDateString()}</td>
-      <td>${new Date(reserva.fechaHora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-      <td>${reserva.nombreCliente}</td>
-      <td>${tourDisplayName}</td>
-      <td>${reserva.recursos.filter(r => !r.includes('Cuatri') && !['Aveo', 'Pointer', 'Sentra', 'Taxi'].includes(r)).join(', ')}</td>
-      <td>${reserva.recursos.filter(r => ['Aveo', 'Pointer', 'Sentra', 'Taxi'].includes(r)).join(', ') || 'N/A'}</td>
-      <td>${reserva.recursos.filter(r => r.includes('Cuatri')).join(', ') || 'N/A'}</td>
-      <td>$${reserva.costoTotal || ''}</td>
-      <td class="${reserva.isCanceled ? 'text-danger' : ''}">${getTourStatus(reserva.fechaHora, reserva.duracion, reserva.isCanceled)}</td>
-      <td>${reserva.vendedor || ''}</td>
-      <td>${reserva.observaciones || ''}</td>
-      <td>
-        <button class="btn btn-sm btn-primary" onclick="editVenta(${index})">Editar</button>
-        <button class="btn btn-sm btn-danger" onclick="showCancelacionModal(${index})">Cancelar</button>
-      </td>
-    `;
+  // Update guide availability
+  document.querySelectorAll('#guiasDisponibles input[type="checkbox"]').forEach(checkbox => {
+    const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
+    checkbox.disabled = !disponible;
+    checkbox.parentElement.classList.toggle('resource-disabled', !disponible);
   });
 }
 
-function handleCheckboxChange(checkbox, index) {
-  if (checkbox.checked) {
-    selectedIndices.add(index);
-  } else {
-    selectedIndices.delete(index);
+document.getElementById('tour').addEventListener('change', function() {
+  const tour = this.value;
+  const vehiculoSection = document.getElementById('vehiculoSection');
+  const cuatrimotosSection = document.getElementById('cuatrimotosSection');
+  
+  // Hide both sections initially
+  vehiculoSection.style.display = 'none';
+  cuatrimotosSection.style.display = 'none';
+  
+  // Show relevant section based on tour
+  if (['ReservaVenados', 'MixtoVenados', 'TunelesVolcanicos'].includes(tour)) {
+    vehiculoSection.style.display = 'block';
   }
   
-  const selectAllCheckbox = document.getElementById('selectAllVentas');
-  if (selectAllCheckbox) {
-    const allCheckboxes = document.querySelectorAll('.venta-checkbox');
-    const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
-    selectAllCheckbox.checked = allChecked;
+  if (['Cuatrimotos', 'MixtoVenados', 'RutasLargas'].includes(tour)) {
+    cuatrimotosSection.style.display = 'block';
   }
-}
+  
+  actualizarDisponibilidad();
+});
+
+document.getElementById('ventasForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  
+  const fechaHora = document.getElementById('fechaHora').value;
+  const tour = document.getElementById('tour').value;
+  const duracion = DURACIONES[tour];
+  
+  // Get selected guides from checkboxes
+  const guias = Array.from(document.querySelectorAll('#guiasDisponibles input:checked'))
+    .map(input => input.value);
+  
+  // Get selected vehicles from checkboxes
+  const vehiculos = Array.from(document.querySelectorAll('#vehiculosDisponibles input:checked'))
+    .map(input => input.value);
+
+  const recursos = [...guias, ...vehiculos];
+  
+  // Rest of the existing code...
+});
+
+document.getElementById('limpiarFormulario').addEventListener('click', function() {
+  // Reset main form
+  document.getElementById('ventasForm').reset();
+  
+  // Reset custom sections and fields
+  document.getElementById('cuatrimotosSection').style.display = 'none';
+  document.getElementById('vehiculoSection').style.display = 'none';
+  document.getElementById('costoTotalContainer').style.display = 'none';
+  
+  // Clear all cuatrimoto checkboxes
+  document.querySelectorAll('#cuatrimotosDisponibles input[type="checkbox"]').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  
+  // Clear all vehicle checkboxes
+  document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"]').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  
+  // Clear multiple selects
+  document.getElementById('guia').selectedIndex = -1;
+  
+  // Reset readonly fields
+  document.getElementById('costoTotalPagar').value = '';
+  document.getElementById('pagoRestante').value = '';
+  
+  // Reset the submit button text if it was in edit mode
+  const submitBtn = document.querySelector('button[type="submit"]');
+  submitBtn.textContent = 'Registrar Venta';
+  delete submitBtn.dataset.editIndex;
+  
+  // Clear availability info
+  document.getElementById('guiaAvailability').textContent = '';
+});
 
 function getTourStatus(fechaHora, duracion, isCanceled = false) {
   if (isCanceled) return 'Cancelado';
@@ -1152,179 +472,199 @@ function getTourStatus(fechaHora, duracion, isCanceled = false) {
   return 'En Curso';
 }
 
+function editVenta(rowIndex) {
+  const row = document.querySelector(`#ventasTable tbody tr:nth-child(${rowIndex + 1})`);
+  if (!row) return;
+
+  const cells = row.cells;
+  
+  const fechaHoraText = cells[1].textContent;
+  const nombreCliente = cells[2].textContent;
+  const tourText = cells[3].textContent;
+  const guiasText = cells[4].textContent;
+  const vehiculosText = cells[5].textContent;
+  const costoText = cells[6].textContent.replace('$', '');
+  const observaciones = cells[9].textContent;
+  
+  try {
+    const [datePart, timePart] = fechaHoraText.split(', ');
+    const [day, month, year] = datePart.split('/');
+    const [hours, minutes] = timePart.split(':');
+    
+    const fechaHora = new Date(year, month - 1, day, hours, minutes);
+    
+    const pad = num => num.toString().padStart(2, '0');
+    const fechaHoraISO = `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}`;
+    
+    document.getElementById('fechaHora').value = fechaHoraISO;
+  } catch (e) {
+    console.error('Error parsing date:', e);
+    const now = new Date();
+    document.getElementById('fechaHora').value = now.toISOString().slice(0, 16);
+  }
+
+  document.getElementById('nombreCliente').value = nombreCliente;
+  
+  const tourSelect = document.getElementById('tour');
+  Array.from(tourSelect.options).forEach(option => {
+    if (option.text.includes(tourText)) {
+      tourSelect.value = option.value;
+      tourSelect.dispatchEvent(new Event('change'));
+    }
+  });
+
+  const vehiculosArray = vehiculosText !== 'N/A' ? vehiculosText.split(', ') : [];
+  document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"]').forEach(checkbox => {
+    checkbox.checked = vehiculosArray.includes(checkbox.value);
+  });
+
+  const guiaSelect = document.getElementById('guia');
+  const guiasArray = guiasText.split(', ');
+  Array.from(guiaSelect.options).forEach(option => {
+    option.selected = guiasArray.includes(option.value);
+  });
+
+  document.getElementById('costoTour').value = costoText;
+  document.getElementById('observaciones').value = observaciones;
+
+  if (tourText.includes('Cuatrimotos')) {
+    const cuatrimotosSeleccionadas = vehiculosText.split(', ');
+    document.querySelectorAll('#cuatrimotosDisponibles input[type="checkbox"]').forEach(checkbox => {
+      checkbox.checked = cuatrimotosSeleccionadas.includes(checkbox.value);
+    });
+    document.getElementById('cuatrimotosSection').style.display = 'block';
+  } else {
+    document.querySelectorAll('#cuatrimotosDisponibles input[type="checkbox"]').forEach(checkbox => {
+      checkbox.checked = false;
+    });
+    document.getElementById('cuatrimotosSection').style.display = 'none';
+  }
+
+  if (document.getElementById('metodoPago').value === 'Terminal') {
+    document.getElementById('costoTotalPagar').value = (parseFloat(costoText) * 1.04).toFixed(2);
+    document.getElementById('costoTotalContainer').style.display = 'block';
+  }
+  
+  const submitBtn = document.querySelector('button[type="submit"]');
+  submitBtn.textContent = 'Actualizar Venta';
+  submitBtn.dataset.editIndex = rowIndex;
+
+  document.getElementById('ventasForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+function showCancelacionModal(rowIndex) {
+  const modal = new bootstrap.Modal(document.getElementById('cancelacionModal'));
+  document.getElementById('confirmarCancelacion').onclick = function() {
+    const motivo = document.getElementById('motivoCancelacion').value;
+    if (!motivo) return;
+    
+    sistemaReservas.cancelarReserva(rowIndex);
+    
+    const row = document.querySelector(`#ventasTable tbody tr:nth-child(${rowIndex + 1})`);
+    const statusCell = row.cells[6];
+    statusCell.textContent = 'Cancelado';
+    statusCell.classList.add('text-danger');
+    
+    document.getElementById('motivoCancelacion').value = '';
+    modal.hide();
+  };
+  modal.show();
+}
+
+function renderizarReservasGuardadas() {
+  const tabla = document.getElementById('ventasTable').getElementsByTagName('tbody')[0];
+  tabla.innerHTML = '';
+  
+  sistemaReservas.reservas.forEach((reserva, index) => {
+    const row = tabla.insertRow();
+    row.innerHTML = `
+      <td>
+        <input type="checkbox" class="venta-checkbox" 
+               data-index="${index}" 
+               style="display:none;">
+      </td>
+      <td>${formatearFecha(reserva.fechaHora)}</td>
+      <td>${reserva.nombreCliente}</td>
+      <td>${reserva.tour || ''}</td>
+      <td>${reserva.recursos.filter(r => !r.includes('Cuatri')).join(', ')}</td>
+      <td>${reserva.recursos.filter(r => r.includes('Cuatri')).join(', ') || 'N/A'}</td>
+      <td>$${reserva.costoTotal || ''}</td>
+      <td class="${reserva.isCanceled ? 'text-danger' : ''}">${getTourStatus(reserva.fechaHora, reserva.duracion, reserva.isCanceled)}</td>
+      <td>${reserva.vendedor || ''}</td>
+      <td>${formatearFecha(reserva.fechaFin)}</td>
+      <td>${reserva.observaciones || ''}</td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="editVenta(${index})">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="showCancelacionModal(${index})">Cancelar</button>
+      </td>
+    `;
+  });
+}
+
 function toggleDeleteMode() {
   deleteMode = !deleteMode;
-  const checkboxCells = document.querySelectorAll('#ventasTable td:first-child, #ventasTable th:first-child');
+  const checkboxes = document.querySelectorAll('.venta-checkbox');
   const deleteBtn = document.getElementById('eliminarVentas');
   const toggleBtn = document.getElementById('toggleEliminar');
   
-  checkboxCells.forEach(cell => {
-    cell.style.display = deleteMode ? 'table-cell' : 'none';
-  });
-  
-  if (deleteBtn) {
-    deleteBtn.style.display = deleteMode ? 'inline-block' : 'none';
-  }
-  
-  if (toggleBtn) {
-    toggleBtn.textContent = deleteMode ? 'Cancelar' : 'Eliminar registros';
-    toggleBtn.classList.toggle('btn-danger');
-    toggleBtn.classList.toggle('btn-warning');
-  }
-
-  if (!deleteMode) {
-    selectedIndices.clear();
-    const selectAllCheckbox = document.getElementById('selectAllVentas');
-    if (selectAllCheckbox) {
-      selectAllCheckbox.checked = false;
-    }
-    document.querySelectorAll('.venta-checkbox').forEach(cb => {
-      cb.checked = false;
-    });
-  }
-
-  renderizarReservasGuardadas();
+  checkboxes.forEach(cb => cb.style.display = deleteMode ? 'inline' : 'none');
+  document.getElementById('selectAllVentas').style.display = deleteMode ? 'inline' : 'none';
+  deleteBtn.style.display = deleteMode ? 'inline' : 'none';
+  toggleBtn.textContent = deleteMode ? 'Cancelar' : 'Modo Eliminar';
+  toggleBtn.classList.toggle('btn-danger');
+  toggleBtn.classList.toggle('btn-warning');
 }
 
 function deleteSelectedVentas() {
-  if (selectedIndices.size === 0) {
-    alert('Por favor seleccione al menos una venta para eliminar');
-    return;
-  }
+  const selectedIndexes = [];
+  document.querySelectorAll('.venta-checkbox:checked').forEach(cb => {
+    selectedIndexes.push(parseInt(cb.dataset.index));
+  });
   
-  if (confirm(`¿Está seguro que desea eliminar ${selectedIndices.size} registro(s)?`)) {
-    const indicesToDelete = Array.from(selectedIndices).sort((a, b) => b - a);
-    
-    indicesToDelete.forEach(index => {
-      if (index >= 0 && index < sistemaReservas.reservas.length) {
-        sistemaReservas.reservas.splice(index, 1);
-      }
+  // Sort descending to avoid index shifting issues when deleting
+  selectedIndexes.sort((a, b) => b - a);
+  
+  if (confirm(`¿Está seguro de eliminar ${selectedIndexes.length} registro(s)?`)) {
+    selectedIndexes.forEach(index => {
+      sistemaReservas.reservas.splice(index, 1);
     });
-    
-    selectedIndices.clear();
     sistemaReservas.guardarReservas();
-    
-    if (sistemaReservas.firebaseManager) {
-      sistemaReservas.firebaseManager.deleteSales(indicesToDelete);
-    }
-    
+    renderizarReservasGuardadas();
     toggleDeleteMode();
   }
 }
 
-function exportarAPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({
-    orientation: 'landscape',
-    unit: 'mm',
-    format: 'a4'
+// Add event listeners
+document.getElementById('toggleEliminar').addEventListener('click', toggleDeleteMode);
+document.getElementById('eliminarVentas').addEventListener('click', deleteSelectedVentas);
+document.getElementById('selectAllVentas').addEventListener('change', function() {
+  document.querySelectorAll('.venta-checkbox').forEach(cb => {
+    cb.checked = this.checked;
   });
-  
-  const table = document.getElementById('ventasTable');
-  const headerRow = Array.from(table.querySelectorAll('thead th'))
-    .map(th => th.textContent)
-    .filter(text => text !== 'Seleccionar' && text !== 'Acciones');
-  
-  const dataRows = Array.from(table.querySelectorAll('tbody tr')).map(row => {
-    return Array.from(row.cells)
-      .map(cell => cell.textContent)
-      .filter((_, index) => index !== 0 && index !== row.cells.length - 1);
-  });
-  
-  doc.text('Registro de Ventas - Xtreme Adventure', 14, 15);
-  
-  doc.autoTable({
-    head: [headerRow],
-    body: dataRows,
-    startY: 25,
-    theme: 'grid',
-    styles: {
-      fontSize: 7,
-      cellPadding: 1,
-      overflow: 'linebreak',
-      halign: 'left'
-    },
-    columnStyles: {
-      0: { cellWidth: 25 }, // Fecha
-      1: { cellWidth: 25 }, // Hora
-      2: { cellWidth: 25 }, // Cliente
-      3: { cellWidth: 25 }, // Tour
-      4: { cellWidth: 25 }, // Guía(s)
-      5: { cellWidth: 20 }, // Vehículo
-      6: { cellWidth: 20 }, // Cuatrimoto
-      7: { cellWidth: 20 }, // Total
-      8: { cellWidth: 25 }, // Estado
-      9: { cellWidth: 25 }, // Vendedor
-      10: { cellWidth: 35 }  // Observaciones
-    },
-    margin: { left: 10, right: 10 },
-    didDrawPage: function(data) {
-      doc.text(
-        'Página ' + doc.internal.getCurrentPageInfo().pageNumber,
-        data.settings.margin.left,
-        doc.internal.pageSize.height - 10
-      );
-    }
-  });
-  
-  doc.save(`registro_ventas_${new Date().toISOString().slice(0,10)}.pdf`);
-}
+});
 
-function exportarAExcel() {
-  const table = document.getElementById('ventasTable');
-  const rows = Array.from(table.querySelectorAll('tr'));
-  
-  const headers = Array.from(rows[0].querySelectorAll('th'))
-    .map(th => th.textContent)
-    .filter(text => text !== 'Seleccionar' && text !== 'Acciones');
-  
-  const data = rows.slice(1).map(row => {
-    return Array.from(row.cells)
-      .map(cell => cell.textContent.trim())
-      .filter((_, index) => index !== 0 && index !== row.cells.length - 1);
-  });
-  
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Registro de Ventas");
-  
-  const colWidths = [
-    {wch: 12}, // Fecha
-    {wch: 8},  // Hora
-    {wch: 25}, // Cliente
-    {wch: 15}, // Tour
-    {wch: 20}, // Guía(s)
-    {wch: 20}, // Vehículo
-    {wch: 10}, // Cuatrimoto
-    {wch: 12}, // Total
-    {wch: 15}, // Estado
-    {wch: 20}, // Vendedor
-    {wch: 30}  // Observaciones
-  ];
-  ws['!cols'] = colWidths;
-  
-  const fileName = `registro_ventas_${new Date().toISOString().slice(0,10)}.xlsx`;
-  XLSX.writeFile(wb, fileName);
-}
-
-function initializeSelectors() {
+function inicializarSelectores() {
+  // Vendedores
   const vendedores = [
-    'Alexia', 'Ana R', 'Erick V', 'Fredy O', 'Iván J',
-    'Jackie T', 'Joaquin L', 'Luis A', 'Manuel A', 'Monse'
+    'Iván J', 'Monse', 'Erick V', 'Alexia', 'Fredy O', 
+    'Ana', 'Manuel A', 'Luis A', 'Joaquín'
   ];
   
+  // Receptores de pago
   const receptores = [
-    'Alexia', 'Ana R', 'Erick V', 'Fredy O', 'Iván J',
-    'Jackie T', 'Joaquin L', 'Luis A', 'Manuel A', 'Mayra B', 'Monse'
+    'Iván J', 'Monse', 'Erick V', 'Alexia', 'Fredy O', 
+    'Ana', 'Manuel A', 'Luis A', 'Mayra', 'Joaquín', 
+    'Ángel', 'Alberto', 'Ángel', 'Toño'
   ];
   
+  // Guías
   const guias = [
-    'Alberto C', 'Ana R', 'Ángel', 'Erick V', 'Iván J', 'Joaquín L',
-    'Luis A', 'Toño P', 'Otro'
-  ].sort();
+    'Alberto C', 'Iván J', 'Ángel', 'Toño', 
+    'Luis A', 'Joaquín', 'Luis'
+  ];
 
+  // Populate vendedor select
   const vendedorSelect = document.getElementById('vendedor');
-  vendedorSelect.innerHTML = '<option value="">Seleccione vendedor</option>';
   vendedores.forEach(vendedor => {
     const option = document.createElement('option');
     option.value = vendedor;
@@ -1332,8 +672,8 @@ function initializeSelectors() {
     vendedorSelect.appendChild(option);
   });
 
+  // Populate receptor select
   const receptorSelect = document.getElementById('receptorPago');
-  receptorSelect.innerHTML = '<option value="">Seleccione receptor</option>';
   receptores.forEach(receptor => {
     const option = document.createElement('option');
     option.value = receptor;
@@ -1341,8 +681,9 @@ function initializeSelectors() {
     receptorSelect.appendChild(option);
   });
 
+  // Initialize guías section with checkboxes
   const guiasDiv = document.getElementById('guiasDisponibles');
-  guiasDiv.innerHTML = '';
+  guiasDiv.innerHTML = ''; // Clear existing content
   guias.forEach(guia => {
     const div = document.createElement('div');
     div.className = 'form-check';
@@ -1353,23 +694,10 @@ function initializeSelectors() {
     guiasDiv.appendChild(div);
   });
 
-  const vehiculosDiv = document.getElementById('vehiculosDisponibles');
-  vehiculosDiv.innerHTML = '';
-  const vehiculos = ['Aveo', 'Pointer', 'Sentra', 'Taxi'];
-  
-  vehiculos.forEach(vehiculo => {
-    const div = document.createElement('div');
-    div.className = 'form-check';
-    div.innerHTML = `
-      <input class="form-check-input" type="checkbox" value="${vehiculo}" id="vehiculo-${vehiculo.toLowerCase()}">
-      <label class="form-check-label" for="vehiculo-${vehiculo.toLowerCase()}">${vehiculo}</label>
-    `;
-    vehiculosDiv.appendChild(div);
-  });
-
+  // Initialize cuatrimotos section
   const cuatrimotosDiv = document.getElementById('cuatrimotosDisponibles');
-  const cuatrimotos = ['Cuatri #1', 'Cuatri #2', 'Cuatri #3', 'Cuatri #4', 'Cuatri #5', 'Cuatri #6'];
-  cuatrimotosDiv.innerHTML = '';
+  const cuatrimotos = ['Cuatri #1', 'Cuatri #2', 'Cuatri #3', 'Cuatri #4', 'Cuatri #5', 'Cuatri extra #6'];
+  cuatrimotosDiv.innerHTML = ''; // Clear existing content
   cuatrimotos.forEach(cuatri => {
     const div = document.createElement('div');
     div.className = 'form-check';
@@ -1383,40 +711,9 @@ function initializeSelectors() {
 
 // Ensure DOM is loaded before initializing
 document.addEventListener('DOMContentLoaded', function() {
-  initializeSelectors();
+  inicializarSelectores();
   actualizarDisponibilidad();
   renderizarReservasGuardadas();
-
-  document.getElementById('limpiarFormulario').addEventListener('click', function() {
-    document.getElementById('nombreCliente').value = '';
-    document.getElementById('telefonoCliente').value = '';
-    document.getElementById('fechaHora').value = '';
-    document.getElementById('tour').value = '';
-    document.getElementById('numPersonas').value = '';
-    document.getElementById('costoTour').value = '';
-    document.getElementById('anticipo').value = '';
-    document.getElementById('metodoPago').value = '';
-    document.getElementById('vendedor').value = '';
-    document.getElementById('receptorPago').value = '';
-    document.getElementById('observaciones').value = '';
-    document.getElementById('pagoRestante').value = '';
-
-    document.getElementById('costoTotalContainer').style.display = 'none';
-    document.getElementById('costoTotalPagar').value = '';
-
-    document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"], #cuatrimotosSection input[type="checkbox"], #guiasDisponibles input[type="checkbox"]').forEach(checkbox => {
-      checkbox.checked = false;
-    });
-
-    document.getElementById('vehiculoSection').style.display = 'none';
-    document.getElementById('cuatrimotosSection').style.display = 'none';
-
-    const submitBtn = document.querySelector('button[type="submit"]');
-    if (submitBtn.dataset.editIndex) {
-      delete submitBtn.dataset.editIndex;
-      submitBtn.textContent = 'Registrar Venta';
-    }
-  });
 });
 </script>
 
