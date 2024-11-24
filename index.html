@@ -1,7 +1,6 @@
 <html><head><base href="." />
 <title>Xtreme Adventure - Sistema de Ventas</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <style>
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -201,14 +200,14 @@
   </div>
 
   <div class="mt-4">
-    <button id="exportExcel" class="btn btn-success mb-3">
+    <button id="exportarExcel" class="btn btn-success mb-3">
       Exportar a Excel
     </button>
     <button id="eliminarVentas" class="btn btn-danger mb-3 ms-2" style="display:none;">
       Eliminar Seleccionados
     </button>
     <button id="toggleEliminar" class="btn btn-warning mb-3 ms-2">
-      Modo Eliminar
+      Eliminar registros
     </button>
 
     <h3>Registro de Ventas</h3>
@@ -216,7 +215,7 @@
       <table class="table table-striped" id="ventasTable">
         <thead>
           <tr>
-            <th><input type="checkbox" id="selectAllVentas"> Seleccionar</th>
+            <th style="display:none"><input type="checkbox" id="selectAllVentas"> Seleccionar</th>
             <th>Fecha/Hora</th>
             <th>Cliente</th>
             <th>Tour</th>
@@ -345,12 +344,6 @@ function formatearFecha(fecha) {
   return new Date(fecha).toLocaleString();
 }
 
-document.getElementById('exportExcel').addEventListener('click', function() {
-  const tabla = document.getElementById('ventasTable');
-  const wb = XLSX.utils.table_to_book(tabla, {sheet: "Ventas"});
-  XLSX.writeFile(wb, `Ventas_${new Date().toISOString().split('T')[0]}.xlsx`);
-});
-
 document.getElementById('fechaHora').addEventListener('change', function() {
   actualizarDisponibilidad();
 });
@@ -362,21 +355,18 @@ function actualizarDisponibilidad() {
 
   const duracion = DURACIONES[tour];
 
-  // Update vehicle availability
   document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"]').forEach(checkbox => {
     const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
     checkbox.disabled = !disponible;
     checkbox.parentElement.classList.toggle('resource-disabled', !disponible);
   });
 
-  // Update cuatrimoto availability 
   document.querySelectorAll('#cuatrimotosDisponibles input[type="checkbox"]').forEach(checkbox => {
     const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
     checkbox.disabled = !disponible;
     checkbox.parentElement.classList.toggle('resource-disabled', !disponible);
   });
 
-  // Update guide availability
   document.querySelectorAll('#guiasDisponibles input[type="checkbox"]').forEach(checkbox => {
     const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
     checkbox.disabled = !disponible;
@@ -389,11 +379,9 @@ document.getElementById('tour').addEventListener('change', function() {
   const vehiculoSection = document.getElementById('vehiculoSection');
   const cuatrimotosSection = document.getElementById('cuatrimotosSection');
   
-  // Hide both sections initially
   vehiculoSection.style.display = 'none';
   cuatrimotosSection.style.display = 'none';
   
-  // Show relevant section based on tour
   if (['ReservaVenados', 'MixtoVenados', 'TunelesVolcanicos'].includes(tour)) {
     vehiculoSection.style.display = 'block';
   }
@@ -408,55 +396,107 @@ document.getElementById('tour').addEventListener('change', function() {
 document.getElementById('ventasForm').addEventListener('submit', function(e) {
   e.preventDefault();
   
+  // Collect all form data
+  const nombreCliente = document.getElementById('nombreCliente').value;
+  const telefonoCliente = document.getElementById('telefonoCliente').value;
   const fechaHora = document.getElementById('fechaHora').value;
   const tour = document.getElementById('tour').value;
+  const numPersonas = document.getElementById('numPersonas').value;
   const duracion = DURACIONES[tour];
+  const costoTour = parseFloat(document.getElementById('costoTour').value);
+  const anticipo = parseFloat(document.getElementById('anticipo').value);
+  const metodoPago = document.getElementById('metodoPago').value;
+  const vendedor = document.getElementById('vendedor').value;
+  const receptorPago = document.getElementById('receptorPago').value;
+  const observaciones = document.getElementById('observaciones').value;
   
-  // Get selected guides from checkboxes
+  // Collect selected guides
   const guias = Array.from(document.querySelectorAll('#guiasDisponibles input:checked'))
     .map(input => input.value);
   
-  // Get selected vehicles from checkboxes
+  // Collect selected vehicles
   const vehiculos = Array.from(document.querySelectorAll('#vehiculosDisponibles input:checked'))
     .map(input => input.value);
-
-  const recursos = [...guias, ...vehiculos];
+    
+  // Collect selected ATVs (cuatrimotos)
+  const cuatrimotos = Array.from(document.querySelectorAll('#cuatrimotosDisponibles input:checked'))
+    .map(input => input.value);
   
-  // Rest of the existing code...
+  // Combine all resources
+  const recursos = [...guias, ...vehiculos, ...cuatrimotos];
+  
+  // Calculate total cost
+  let costoTotal = costoTour;
+  if (metodoPago === 'Terminal') {
+    costoTotal = costoTour * 1.04;
+  }
+  
+  // Create new reservation
+  const nuevaReserva = new Reserva(
+    nombreCliente,
+    telefonoCliente,
+    fechaHora,
+    duracion,
+    recursos,
+    observaciones
+  );
+  
+  // Add additional properties
+  nuevaReserva.tour = tour;
+  nuevaReserva.numPersonas = numPersonas;
+  nuevaReserva.costoTotal = costoTotal;
+  nuevaReserva.anticipo = anticipo;
+  nuevaReserva.metodoPago = metodoPago;
+  nuevaReserva.vendedor = vendedor;
+  nuevaReserva.receptorPago = receptorPago;
+  
+  // Check if we're editing an existing entry
+  const submitBtn = document.querySelector('button[type="submit"]');
+  if (submitBtn.dataset.editIndex) {
+    // Update existing reservation
+    const index = parseInt(submitBtn.dataset.editIndex);
+    sistemaReservas.reservas[index] = nuevaReserva;
+    delete submitBtn.dataset.editIndex;
+    submitBtn.textContent = 'Registrar Venta';
+  } else {
+    // Add new reservation
+    sistemaReservas.agregarReserva(nuevaReserva);
+  }
+  
+  // Save and refresh display
+  sistemaReservas.guardarReservas();
+  renderizarReservasGuardadas();
+  
+  // Clear form
+  document.getElementById('limpiarFormulario').click();
+  
+  alert('Venta registrada exitosamente');
 });
 
 document.getElementById('limpiarFormulario').addEventListener('click', function() {
-  // Reset main form
   document.getElementById('ventasForm').reset();
   
-  // Reset custom sections and fields
   document.getElementById('cuatrimotosSection').style.display = 'none';
   document.getElementById('vehiculoSection').style.display = 'none';
   document.getElementById('costoTotalContainer').style.display = 'none';
   
-  // Clear all cuatrimoto checkboxes
   document.querySelectorAll('#cuatrimotosDisponibles input[type="checkbox"]').forEach(checkbox => {
     checkbox.checked = false;
   });
   
-  // Clear all vehicle checkboxes
   document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"]').forEach(checkbox => {
     checkbox.checked = false;
   });
   
-  // Clear multiple selects
   document.getElementById('guia').selectedIndex = -1;
   
-  // Reset readonly fields
   document.getElementById('costoTotalPagar').value = '';
-  document.getElementById('pagoRestante').value = '';
-  
-  // Reset the submit button text if it was in edit mode
+  document.getElementById('anticipo').value = '';
+
   const submitBtn = document.querySelector('button[type="submit"]');
   submitBtn.textContent = 'Registrar Venta';
   delete submitBtn.dataset.editIndex;
   
-  // Clear availability info
   document.getElementById('guiaAvailability').textContent = '';
 });
 
@@ -578,10 +618,8 @@ function renderizarReservasGuardadas() {
   sistemaReservas.reservas.forEach((reserva, index) => {
     const row = tabla.insertRow();
     row.innerHTML = `
-      <td>
-        <input type="checkbox" class="venta-checkbox" 
-               data-index="${index}" 
-               style="display:none;">
+      <td style="display:none">
+        <input type="checkbox" class="venta-checkbox" data-index="${index}">
       </td>
       <td>${formatearFecha(reserva.fechaHora)}</td>
       <td>${reserva.nombreCliente}</td>
@@ -603,16 +641,27 @@ function renderizarReservasGuardadas() {
 
 function toggleDeleteMode() {
   deleteMode = !deleteMode;
-  const checkboxes = document.querySelectorAll('.venta-checkbox');
+  const checkboxCells = document.querySelectorAll('#ventasTable td:first-child, #ventasTable th:first-child');
   const deleteBtn = document.getElementById('eliminarVentas');
   const toggleBtn = document.getElementById('toggleEliminar');
   
-  checkboxes.forEach(cb => cb.style.display = deleteMode ? 'inline' : 'none');
-  document.getElementById('selectAllVentas').style.display = deleteMode ? 'inline' : 'none';
-  deleteBtn.style.display = deleteMode ? 'inline' : 'none';
-  toggleBtn.textContent = deleteMode ? 'Cancelar' : 'Modo Eliminar';
-  toggleBtn.classList.toggle('btn-danger');
-  toggleBtn.classList.toggle('btn-warning');
+  if(checkboxCells) {
+    checkboxCells.forEach(cell => {
+      if(cell) {
+        cell.style.display = deleteMode ? '' : 'none';
+      }
+    });
+  }
+  
+  if(deleteBtn) {
+    deleteBtn.style.display = deleteMode ? 'inline' : 'none';
+  }
+  
+  if(toggleBtn) {
+    toggleBtn.textContent = deleteMode ? 'Cancelar' : 'Eliminar registros';
+    toggleBtn.classList.toggle('btn-danger');
+    toggleBtn.classList.toggle('btn-warning');
+  }
 }
 
 function deleteSelectedVentas() {
@@ -621,7 +670,6 @@ function deleteSelectedVentas() {
     selectedIndexes.push(parseInt(cb.dataset.index));
   });
   
-  // Sort descending to avoid index shifting issues when deleting
   selectedIndexes.sort((a, b) => b - a);
   
   if (confirm(`¿Está seguro de eliminar ${selectedIndexes.length} registro(s)?`)) {
@@ -635,35 +683,103 @@ function deleteSelectedVentas() {
 }
 
 // Add event listeners
-document.getElementById('toggleEliminar').addEventListener('click', toggleDeleteMode);
-document.getElementById('eliminarVentas').addEventListener('click', deleteSelectedVentas);
-document.getElementById('selectAllVentas').addEventListener('change', function() {
-  document.querySelectorAll('.venta-checkbox').forEach(cb => {
-    cb.checked = this.checked;
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('costoTour').addEventListener('input', updateRemainingPayment);
+  document.getElementById('anticipo').addEventListener('input', updateRemainingPayment);
+
+  function updateRemainingPayment() {
+    const costoTour = parseFloat(document.getElementById('costoTour').value) || 0;
+    const anticipo = parseFloat(document.getElementById('anticipo').value) || 0;
+    const metodoPago = document.getElementById('metodoPago').value;
+    
+    let costoTotal = costoTour;
+    if (metodoPago === 'Terminal') {
+      costoTotal = costoTour * 1.04;
+    }
+    
+    const pagoRestante = costoTotal - anticipo;
+    document.getElementById('pagoRestante').value = pagoRestante.toFixed(2);
+  }
+
+  // Update metodoPago event listener
+  document.getElementById('metodoPago').addEventListener('change', function() {
+    const costoTotalContainer = document.getElementById('costoTotalContainer');
+    const costoTour = parseFloat(document.getElementById('costoTour').value) || 0;
+    
+    if (this.value === 'Terminal') {
+      document.getElementById('costoTotalPagar').value = (costoTour * 1.04).toFixed(2);
+      costoTotalContainer.style.display = 'block';
+    } else {
+      costoTotalContainer.style.display = 'none';
+      document.getElementById('costoTotalPagar').value = '';
+    }
+    
+    updateRemainingPayment();
   });
+
+  document.getElementById('costoTour').addEventListener('input', function() {
+    const metodoPago = document.getElementById('metodoPago').value;
+    const costoTotalContainer = document.getElementById('costoTotalContainer');
+    const costoTour = parseFloat(this.value) || 0;
+    
+    if (metodoPago === 'Terminal') {
+      document.getElementById('costoTotalPagar').value = (costoTour * 1.04).toFixed(2);
+      costoTotalContainer.style.display = 'block';
+    }
+    
+    updateRemainingPayment();
+  });
+
+  // Initialize delete mode elements
+  const deleteBtn = document.getElementById('eliminarVentas');
+  const toggleBtn = document.getElementById('toggleEliminar');
+  const exportBtn = document.getElementById('exportarExcel');
+  
+  if(toggleBtn) {
+    toggleBtn.addEventListener('click', toggleDeleteMode);
+  }
+  
+  if(deleteBtn) {
+    deleteBtn.addEventListener('click', deleteSelectedVentas);
+  }
+  
+  if(exportBtn) {
+    exportBtn.addEventListener('click', exportarAExcel);
+  }
+
+  // Initialize select all checkbox
+  const selectAllCheckbox = document.getElementById('selectAllVentas');
+  if(selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', function() {
+      document.querySelectorAll('.venta-checkbox').forEach(cb => {
+        cb.checked = this.checked;
+      });
+    });
+  }
+
+  // Initialize the rest of the page
+  inicializarSelectores();
+  actualizarDisponibilidad();
+  renderizarReservasGuardadas();
 });
 
 function inicializarSelectores() {
-  // Vendedores
   const vendedores = [
     'Iván J', 'Monse', 'Erick V', 'Alexia', 'Fredy O', 
     'Ana', 'Manuel A', 'Luis A', 'Joaquín'
   ];
   
-  // Receptores de pago
   const receptores = [
     'Iván J', 'Monse', 'Erick V', 'Alexia', 'Fredy O', 
     'Ana', 'Manuel A', 'Luis A', 'Mayra', 'Joaquín', 
     'Ángel', 'Alberto', 'Ángel', 'Toño'
   ];
   
-  // Guías
   const guias = [
     'Alberto C', 'Iván J', 'Ángel', 'Toño', 
     'Luis A', 'Joaquín', 'Luis'
   ];
 
-  // Populate vendedor select
   const vendedorSelect = document.getElementById('vendedor');
   vendedores.forEach(vendedor => {
     const option = document.createElement('option');
@@ -672,7 +788,6 @@ function inicializarSelectores() {
     vendedorSelect.appendChild(option);
   });
 
-  // Populate receptor select
   const receptorSelect = document.getElementById('receptorPago');
   receptores.forEach(receptor => {
     const option = document.createElement('option');
@@ -681,9 +796,8 @@ function inicializarSelectores() {
     receptorSelect.appendChild(option);
   });
 
-  // Initialize guías section with checkboxes
   const guiasDiv = document.getElementById('guiasDisponibles');
-  guiasDiv.innerHTML = ''; // Clear existing content
+  guiasDiv.innerHTML = '';
   guias.forEach(guia => {
     const div = document.createElement('div');
     div.className = 'form-check';
@@ -694,10 +808,9 @@ function inicializarSelectores() {
     guiasDiv.appendChild(div);
   });
 
-  // Initialize cuatrimotos section
   const cuatrimotosDiv = document.getElementById('cuatrimotosDisponibles');
   const cuatrimotos = ['Cuatri #1', 'Cuatri #2', 'Cuatri #3', 'Cuatri #4', 'Cuatri #5', 'Cuatri extra #6'];
-  cuatrimotosDiv.innerHTML = ''; // Clear existing content
+  cuatrimotosDiv.innerHTML = '';
   cuatrimotos.forEach(cuatri => {
     const div = document.createElement('div');
     div.className = 'form-check';
@@ -715,6 +828,41 @@ document.addEventListener('DOMContentLoaded', function() {
   actualizarDisponibilidad();
   renderizarReservasGuardadas();
 });
+
+function exportarAExcel() {
+  const table = document.getElementById('ventasTable');
+  
+  const rows = Array.from(table.querySelectorAll('tr'));
+  
+  const headers = Array.from(rows[0].cells)
+    .map(cell => cell.textContent)
+    .filter(text => text !== 'Seleccionar' && text !== 'Acciones');
+  
+  const data = rows.slice(1).map(row => {
+    return Array.from(row.cells)
+      .map(cell => cell.textContent)
+      .filter((_, index) => {
+        return index !== 0 && index !== row.cells.length - 1;
+      });
+  });
+  
+  const csvContent = [
+    headers.join(','),
+    ...data.map(row => row.join(','))
+  ].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `registro_ventas_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// Add event listener for export button
+document.getElementById('exportarExcel').addEventListener('click', exportarAExcel);
 </script>
 
 </body></html>
