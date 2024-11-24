@@ -393,7 +393,7 @@
       <table class="table table-striped" id="ventasTable">
         <thead>
           <tr>
-            <th style="display:none"><input type="checkbox" id="selectAllVentas"> Seleccionar</th>
+            <th style="display:none"><input type="checkbox" id="selectAllVentas" onclick="selectAllVentas(this)"> Seleccionar</th>
             <th>Cliente</th>
             <th>Tour</th>
             <th>Guía(s)</th>
@@ -401,7 +401,9 @@
             <th>Cuatrimoto</th>
             <th>Hora</th>
             <th>Total</th>
-            <th>Estado</th>
+            <th>Estado Pago</th>
+            <th>Pago Restante</th>
+            <th>Estado Tour</th>
             <th>Vendedor</th>
             <th>Observaciones/Motivo de cancelación</th>
             <th>Acciones</th>
@@ -644,8 +646,11 @@ class RealtimeManager {
       case 'delete':
         if (Array.isArray(data.indices)) {
           data.indices.sort((a, b) => b - a).forEach(index => {
-            sistemaReservas.reservas.splice(index, 1);
+            if (index >= 0 && index < sistemaReservas.reservas.length) {
+              sistemaReservas.reservas.splice(index, 1);
+            }
           });
+          selectedIndices.clear();
           renderizarReservasGuardadas();
         }
         break;
@@ -1177,9 +1182,10 @@ function renderizarReservasGuardadas() {
   const tabla = document.getElementById('ventasTable').getElementsByTagName('tbody')[0];
   tabla.innerHTML = '';
   
+  // Update header with select all checkbox
   const headerRow = document.querySelector('#ventasTable thead tr');
   headerRow.innerHTML = `
-    ${deleteMode ? '<th><input type="checkbox" id="selectAllVentas"> Seleccionar</th>' : ''}
+    ${deleteMode ? '<th><input type="checkbox" id="selectAllVentas" onclick="selectAllVentas(this)"> Seleccionar</th>' : ''}
     <th>Cliente</th>
     <th>Tour</th>
     <th>Guía(s)</th>
@@ -1187,7 +1193,9 @@ function renderizarReservasGuardadas() {
     <th>Cuatrimoto</th>
     <th>Hora</th>
     <th>Total</th>
-    <th>Estado</th>
+    <th>Estado Pago</th>
+    <th>Pago Restante</th>
+    <th>Estado Tour</th>
     <th>Vendedor</th>
     <th>Observaciones/Motivo de cancelación</th>
     <th>Acciones</th>
@@ -1219,6 +1227,11 @@ function renderizarReservasGuardadas() {
 
     const tourDisplayName = tourDisplayNames[reserva.tour] || reserva.tour;
     
+    // Calculate payment status and remaining payment
+    const pagoRestante = reserva.costoTotal - (reserva.anticipo || 0);
+    const estadoPago = pagoRestante <= 0 ? 'Liquidado' : 'Pendiente';
+    const pagoRestanteDisplay = pagoRestante <= 0 ? '-' : `$${pagoRestante.toFixed(2)}`;
+    
     row.innerHTML += `
       <td>${reserva.nombreCliente}</td>
       <td>${tourDisplayName}</td>
@@ -1227,6 +1240,8 @@ function renderizarReservasGuardadas() {
       <td>${reserva.recursos.filter(r => r.includes('Cuatri')).join(', ') || 'N/A'}</td>
       <td>${new Date(reserva.fechaHora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
       <td>$${reserva.costoTotal || ''}</td>
+      <td style="color: ${estadoPago === 'Liquidado' ? '#198754' : '#dc3545'}">${estadoPago}</td>
+      <td style="color: ${pagoRestante <= 0 ? '#198754' : '#dc3545'}">${pagoRestanteDisplay}</td>
       <td class="${reserva.isCanceled ? 'text-danger' : ''}">${getTourStatus(reserva.fechaHora, reserva.duracion, reserva.isCanceled)}</td>
       <td>${reserva.vendedor || ''}</td>
       <td>${reserva.observaciones || ''}</td>
@@ -1245,26 +1260,30 @@ function handleCheckboxChange(checkbox, index) {
     selectedIndices.delete(index);
   }
   
+  // Update select all checkbox state
   const selectAllCheckbox = document.getElementById('selectAllVentas');
+  const allCheckboxes = document.querySelectorAll('.venta-checkbox');
+  const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+  
   if (selectAllCheckbox) {
-    const allCheckboxes = document.querySelectorAll('.venta-checkbox');
-    const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
     selectAllCheckbox.checked = allChecked;
   }
 }
 
-function getTourStatus(fechaHora, duracion, isCanceled = false) {
-  if (isCanceled) return 'Cancelado';
-  
-  const ahora = new Date();
-  const inicio = new Date(fechaHora);
-  const fin = new Date(inicio.getTime() + duracion * 60000);
-  
-  if (ahora < inicio) return 'Pendiente';
-  if (ahora > fin) return 'Finalizado';
-  return 'En Curso';
+function selectAllVentas(checkbox) {
+  const checkboxes = document.querySelectorAll('.venta-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = checkbox.checked;
+    const index = parseInt(cb.dataset.index);
+    if (checkbox.checked) {
+      selectedIndices.add(index);
+    } else {
+      selectedIndices.delete(index);
+    }
+  });
 }
 
+// Update toggleDeleteMode to reset select all checkbox
 function toggleDeleteMode() {
   deleteMode = !deleteMode;
   const checkboxCells = document.querySelectorAll('#ventasTable td:first-child, #ventasTable th:first-child');
@@ -1285,6 +1304,7 @@ function toggleDeleteMode() {
     toggleBtn.classList.toggle('btn-warning');
   }
 
+  // Reset selection state
   if (!deleteMode) {
     selectedIndices.clear();
     const selectAllCheckbox = document.getElementById('selectAllVentas');
@@ -1301,23 +1321,57 @@ function toggleDeleteMode() {
 
 function deleteSelectedVentas() {
   if (selectedIndices.size === 0) {
-    alert('Por favor seleccione al menos una venta para eliminar');
+    alert('Por favor seleccione al menos un registro para eliminar');
     return;
   }
-  
-  if (confirm(`¿Está seguro que desea eliminar ${selectedIndices.size} registro(s)?`)) {
-    const indicesToDelete = Array.from(selectedIndices).sort((a, b) => b - a);
-    
-    indicesToDelete.forEach(index => {
-      if (index >= 0 && index < sistemaReservas.reservas.length) {
+
+  if (confirm('¿Está seguro que desea eliminar los registros seleccionados?')) {
+    try {
+      // Convert set to array and sort in descending order to avoid index shifting issues
+      const indicesToDelete = Array.from(selectedIndices).sort((a, b) => b - a);
+      
+      // Remove selected items from reservas array
+      indicesToDelete.forEach(index => {
         sistemaReservas.reservas.splice(index, 1);
+      });
+
+      // Broadcast the delete operation to other clients
+      if (sistemaReservas.realtimeManager) {
+        sistemaReservas.realtimeManager.broadcast('delete', {
+          indices: Array.from(selectedIndices)
+        });
       }
-    });
-    
-    selectedIndices.clear();
-    sistemaReservas.guardarReservas();
-    toggleDeleteMode();
+
+      // Clear selection set
+      selectedIndices.clear();
+
+      // Save changes
+      sistemaReservas.guardarReservas();
+      
+      // Exit delete mode
+      toggleDeleteMode();
+      
+      // Re-render the table
+      renderizarReservasGuardadas();
+      
+      alert('Registros eliminados exitosamente');
+    } catch (error) {
+      console.error('Error deleting records:', error);
+      alert('Error al eliminar los registros. Por favor intente nuevamente.');
+    }
   }
+}
+
+function getTourStatus(fechaHora, duracion, isCanceled = false) {
+  if (isCanceled) return 'Cancelado';
+  
+  const ahora = new Date();
+  const inicio = new Date(fechaHora);
+  const fin = new Date(inicio.getTime() + duracion * 60000);
+  
+  if (ahora < inicio) return 'Pendiente';
+  if (ahora > fin) return 'Finalizado';
+  return 'En Curso';
 }
 
 function exportarAPDF() {
