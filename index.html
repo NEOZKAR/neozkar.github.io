@@ -5,8 +5,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.8.4/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.8.4/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.8.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.8.4/firebase-database-compat.js"></script>
 <style>
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -494,68 +494,98 @@ class Reserva {
 
 class FirebaseManager {
   constructor() {
-    // Initialize Firebase
-    const firebaseConfig = {
-      // Replace with your Firebase config
-      apiKey: "your-api-key",
-      authDomain: "your-auth-domain",
-      databaseURL: "your-database-url",
-      projectId: "your-project-id",
-      storageBucket: "your-storage-bucket",
-      messagingSenderId: "your-messaging-sender-id",
-      appId: "your-app-id"
-    };
+    try {
+      // Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyD3aB0UGQc9cDxn4SsBKpEZn8S1x6eEWxQ",
+        authDomain: "xtreme-adventure-sales.firebaseapp.com", 
+        databaseURL: "https://xtreme-adventure-sales-default-rtdb.firebaseio.com",
+        projectId: "xtreme-adventure-sales",
+        storageBucket: "xtreme-adventure-sales.appspot.com",
+        messagingSenderId: "558082141442",
+        appId: "1:558082141442:web:8dd4502d521cd226bc9e2b"
+      };
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    this.database = firebase.database();
-    this.salesRef = this.database.ref('sales');
+      // Initialize Firebase
+      const app = firebase.initializeApp(firebaseConfig);
+      this.database = firebase.database();
+      this.salesRef = this.database.ref('sales');
+      
+      // Setup realtime listener
+      this.salesRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          sistemaReservas.reservas = Object.values(data).map(r => {
+            const reserva = new Reserva(
+              r.nombreCliente,
+              r.telefonoCliente,
+              r.fechaHora,
+              r.duracion,
+              r.recursos,
+              r.observaciones,
+              r.isCanceled
+            );
+            Object.assign(reserva, r);
+            return reserva;
+          });
+          renderizarReservasGuardadas();
+        }
+      }, (error) => {
+        console.error("Firebase sync error:", error);
+        this.fallbackToLocalStorage();
+      });
 
-    // Listen for changes
-    this.setupRealtimeListeners();
+    } catch (error) {
+      console.error("Firebase initialization error:", error);
+      this.fallbackToLocalStorage();
+    }
   }
 
-  setupRealtimeListeners() {
-    this.salesRef.on('value', (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        sistemaReservas.reservas = Object.values(data).map(r => {
-          const reserva = new Reserva(
-            r.nombreCliente,
-            r.telefonoCliente,
-            r.fechaHora,
-            r.duracion,
-            r.recursos,
-            r.observaciones,
-            r.isCanceled
-          );
-          Object.assign(reserva, r);
-          return reserva;
-        });
-        renderizarReservasGuardadas();
-      }
-    });
+  fallbackToLocalStorage() {
+    console.log("Falling back to localStorage");
+    this.database = null;
+    this.useLocalStorage = true;
   }
 
   updateSales(reservas) {
-    this.salesRef.set(reservas);
+    if (this.database) {
+      this.salesRef.set(reservas)
+        .catch(error => {
+          console.error("Firebase update error:", error);
+          if (this.useLocalStorage) {
+            localStorage.setItem('reservas', JSON.stringify(reservas));
+          }
+        });
+    } else if (this.useLocalStorage) {
+      localStorage.setItem('reservas', JSON.stringify(reservas));
+    }
   }
 
   deleteSales(indices) {
-    const updates = {};
-    indices.forEach(index => {
-      updates[`/${index}`] = null;
-    });
-    this.salesRef.update(updates);
+    if (this.database) {
+      const updates = {};
+      indices.forEach(index => {
+        updates[`/${index}`] = null;
+      });
+      this.salesRef.update(updates)
+        .catch(error => {
+          console.error("Firebase delete error:", error);
+        });
+    }
   }
 }
 
 class SistemaReservas {
   constructor() {
-    this.reservas = this.cargarReservas();
-    this.firebaseManager = new FirebaseManager();
+    try {
+      this.firebaseManager = new FirebaseManager();
+      this.reservas = this.cargarReservas();
+    } catch (error) {
+      console.error('SistemaReservas initialization error:', error);
+      this.reservas = [];
+    }
   }
-
+  
   cargarReservas() {
     const reservasGuardadas = localStorage.getItem('reservas');
     if (!reservasGuardadas) return [];
@@ -1022,6 +1052,22 @@ document.addEventListener('DOMContentLoaded', function() {
   actualizarDisponibilidad();
   renderizarReservasGuardadas();
 });
+
+// Add status indicator update
+function updateConnectionStatus(online) {
+  const statusDot = document.querySelector('.status-dot');
+  const statusText = document.querySelector('.status-text');
+  
+  if (statusDot && statusText) {
+    statusDot.className = `status-dot ${online ? 'online' : 'offline'}`;
+    statusText.textContent = online ? 'Conectado' : 'Desconectado';
+  }
+}
+
+// Add connection monitoring
+window.addEventListener('online', () => updateConnectionStatus(true));
+window.addEventListener('offline', () => updateConnectionStatus(false));
+updateConnectionStatus(navigator.onLine);
 
 function renderizarReservasGuardadas() {
   const tabla = document.getElementById('ventasTable').getElementsByTagName('tbody')[0];
