@@ -5,6 +5,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.8.4/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.8.4/firebase-database.js"></script>
 <style>
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -490,214 +492,68 @@ class Reserva {
   }
 }
 
-class ConnectionManager {
+class FirebaseManager {
   constructor() {
-    this.isOnline = navigator.onLine;
-    this.setupListeners();
-    this.updateStatus();
+    // Initialize Firebase
+    const firebaseConfig = {
+      // Replace with your Firebase config
+      apiKey: "your-api-key",
+      authDomain: "your-auth-domain",
+      databaseURL: "your-database-url",
+      projectId: "your-project-id",
+      storageBucket: "your-storage-bucket",
+      messagingSenderId: "your-messaging-sender-id",
+      appId: "your-app-id"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    this.database = firebase.database();
+    this.salesRef = this.database.ref('sales');
+
+    // Listen for changes
+    this.setupRealtimeListeners();
   }
 
-  setupListeners() {
-    window.addEventListener('online', () => {
-      this.isOnline = true;
-      this.updateStatus();
-    });
-
-    window.addEventListener('offline', () => {
-      this.isOnline = false;
-      this.updateStatus();
-    });
-  }
-
-  updateStatus() {
-    const statusDot = document.querySelector('.status-dot');
-    const statusText = document.querySelector('.status-text');
-
-    if (statusDot && statusText) {
-      if (this.isOnline) {
-        statusDot.classList.add('online');
-        statusDot.classList.remove('offline');
-        statusText.textContent = 'En Línea';
-      } else {
-        statusDot.classList.add('offline');
-        statusDot.classList.remove('online');
-        statusText.textContent = 'Sin Conexión';
-      }
-    }
-  }
-}
-
-class RealtimeManager {
-  constructor() {
-    this.ws = null;
-    this.clientId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
-    this.init();
-  }
-
-  init() {
-    this.setupWebSocket();
-    this.setupStorageListener();
-    this.setupOfflineSupport();
-  }
-
-  setupWebSocket() {
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.hostname}:8080`;
-
-    try {
-      this.ws = new WebSocket(wsUrl);
-      
-      this.ws.onopen = () => {
-        console.log('WebSocket connected');
-        this.reconnectAttempts = 0;
-        this.syncData();
-      };
-
-      this.ws.onclose = () => {
-        console.log('WebSocket disconnected');
-        this.handleDisconnection();
-      };
-
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        this.fallbackToLocalStorage();
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          this.handleIncomingMessage(data);
-        } catch (error) {
-          console.error('Error processing message:', error);
-        }
-      };
-    } catch (error) {
-      console.error('Error setting up WebSocket:', error);
-      this.fallbackToLocalStorage();
-    }
-  }
-
-  setupStorageListener() {
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'reservas') {
-        try {
-          const newData = JSON.parse(event.newValue);
-          if (newData && Array.isArray(newData)) {
-            sistemaReservas.reservas = this.parseReservas(newData);
-            renderizarReservasGuardadas();
-          }
-        } catch (error) {
-          console.error('Error processing storage event:', error);
-        }
-      }
-    });
-  }
-
-  setupOfflineSupport() {
-    window.addEventListener('online', () => {
-      console.log('Connection restored - attempting to reconnect WebSocket');
-      this.setupWebSocket();
-    });
-
-    window.addEventListener('offline', () => {
-      console.log('Connection lost - falling back to localStorage');
-      this.fallbackToLocalStorage();
-    });
-  }
-
-  parseReservas(data) {
-    return data.map(r => {
-      const reserva = new Reserva(
-        r.nombreCliente,
-        r.telefonoCliente,
-        r.fechaHora,
-        r.duracion,
-        r.recursos,
-        r.observaciones,
-        r.isCanceled
-      );
-      Object.assign(reserva, r);
-      return reserva;
-    });
-  }
-
-  syncData() {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        type: 'sync_request',
-        clientId: this.clientId,
-        timestamp: Date.now()
-      }));
-    }
-  }
-
-  handleIncomingMessage(data) {
-    if (data.clientId === this.clientId) return;
-
-    switch (data.type) {
-      case 'sync_response':
-      case 'update':
-        sistemaReservas.reservas = this.parseReservas(data.reservas);
+  setupRealtimeListeners() {
+    this.salesRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        sistemaReservas.reservas = Object.values(data).map(r => {
+          const reserva = new Reserva(
+            r.nombreCliente,
+            r.telefonoCliente,
+            r.fechaHora,
+            r.duracion,
+            r.recursos,
+            r.observaciones,
+            r.isCanceled
+          );
+          Object.assign(reserva, r);
+          return reserva;
+        });
         renderizarReservasGuardadas();
-        break;
-      case 'delete':
-        if (Array.isArray(data.indices)) {
-          data.indices.sort((a, b) => b - a).forEach(index => {
-            sistemaReservas.reservas.splice(index, 1);
-          });
-          renderizarReservasGuardadas();
-        }
-        break;
-    }
-  }
-
-  handleDisconnection() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      setTimeout(() => this.setupWebSocket(), 5000);
-    } else {
-      console.log('Max reconnection attempts reached, falling back to localStorage');
-      this.fallbackToLocalStorage();
-    }
-  }
-
-  fallbackToLocalStorage() {
-    console.log('Falling back to localStorage synchronization');
-    try {
-      const storedData = localStorage.getItem('reservas');
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        if (Array.isArray(parsedData)) {
-          sistemaReservas.reservas = this.parseReservas(parsedData);
-          renderizarReservasGuardadas();
-        }
       }
-    } catch (error) {
-      console.error('Error falling back to localStorage:', error);
-    }
+    });
   }
 
-  broadcast(type, payload) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        type,
-        clientId: this.clientId,
-        timestamp: Date.now(),
-        ...payload
-      }));
-    } else {
-      this.fallbackToLocalStorage();
-    }
+  updateSales(reservas) {
+    this.salesRef.set(reservas);
+  }
+
+  deleteSales(indices) {
+    const updates = {};
+    indices.forEach(index => {
+      updates[`/${index}`] = null;
+    });
+    this.salesRef.update(updates);
   }
 }
 
 class SistemaReservas {
   constructor() {
     this.reservas = this.cargarReservas();
-    this.realtimeManager = new RealtimeManager();
+    this.firebaseManager = new FirebaseManager();
   }
 
   cargarReservas() {
@@ -730,11 +586,8 @@ class SistemaReservas {
   guardarReservas() {
     try {
       localStorage.setItem('reservas', JSON.stringify(this.reservas));
-      
-      if (this.realtimeManager) {
-        this.realtimeManager.broadcast('update', {
-          reservas: this.reservas
-        });
+      if (this.firebaseManager) {
+        this.firebaseManager.updateSales(this.reservas);
       }
     } catch (error) {
       console.error('Error saving reservations:', error);
@@ -813,7 +666,6 @@ class SistemaReservas {
 }
 
 const sistemaReservas = new SistemaReservas();
-const realtimeManager = new RealtimeManager();
 
 function formatearFecha(fecha) {
   if (!fecha) return 'N/A';
@@ -1002,8 +854,11 @@ function showCancelacionModal(index) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  const connectionManager = new ConnectionManager();
-  const realtimeManager = new RealtimeManager();
+  const sistemaReservas = new SistemaReservas();
+  initializeSelectors();
+  actualizarDisponibilidad();
+  renderizarReservasGuardadas();
+  
   const costoTourInput = document.getElementById('costoTour');
   const anticipoInput = document.getElementById('anticipo');
   const metodoPagoSelect = document.getElementById('metodoPago');
@@ -1071,12 +926,6 @@ document.addEventListener('DOMContentLoaded', function() {
   ventasForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    const connectionManager = new ConnectionManager();
-    if (!connectionManager.isOnline) {
-      alert('No hay conexión a internet. Por favor, verifique su conexión e intente nuevamente.');
-      return;
-    }
-
     const nombreCliente = document.getElementById('nombreCliente').value;
     const telefonoCliente = document.getElementById('telefonoCliente').value;
     const fechaHora = document.getElementById('fechaHora').value;
@@ -1308,6 +1157,11 @@ function deleteSelectedVentas() {
     
     selectedIndices.clear();
     sistemaReservas.guardarReservas();
+    
+    if (sistemaReservas.firebaseManager) {
+      sistemaReservas.firebaseManager.deleteSales(indicesToDelete);
+    }
+    
     toggleDeleteMode();
   }
 }
