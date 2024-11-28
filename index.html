@@ -393,17 +393,16 @@
       <table class="table table-striped" id="ventasTable">
         <thead>
           <tr>
-            <th style="display:none"><input type="checkbox" id="selectAllVentas" onclick="selectAllVentas(this)"> Seleccionar</th>
+            <th style="display:none"><input type="checkbox" id="selectAllVentas"> Seleccionar</th>
+            <th>Fecha</th>
+            <th>Hora</th>
             <th>Cliente</th>
             <th>Tour</th>
             <th>Guía(s)</th>
             <th>Vehículo</th>
             <th>Cuatrimoto</th>
-            <th>Hora</th>
             <th>Total</th>
-            <th>Estado Pago</th>
-            <th>Pago Restante</th>
-            <th>Estado Tour</th>
+            <th>Estado</th>
             <th>Vendedor</th>
             <th>Observaciones/Motivo de cancelación</th>
             <th>Acciones</th>
@@ -440,57 +439,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-let deleteMode = false;
-let selectedIndices = new Set();
-
-const DURACIONES = {
-  'Cabalgata': 90,
-  'Cuatrimotos': 90,
-  'ReservaVenados': 90,
-  'TunelesVolcanicos': 120,
-  'MixtoVenados': 100,
-  'RutasLargas': 180
-};
-
-class Reserva {
-  constructor(nombreCliente, telefonoCliente, fechaHora, duracion, recursos, observaciones, isCanceled = false) {
-    this.nombreCliente = nombreCliente;
-    this.telefonoCliente = telefonoCliente; 
-    this.fechaHora = fechaHora;
-    this.duracion = duracion;
-    this.recursos = recursos;
-    this.observaciones = observaciones;
-    this.isCanceled = isCanceled;
-    
-    this.tour = null;
-    this.numPersonas = null;
-    this.costoTotal = null;
-    this.anticipo = null;
-    this.metodoPago = null;
-    this.vendedor = null;
-    this.receptorPago = null;
-  }
-
-  toJSON() {
-    return {
-      nombreCliente: this.nombreCliente,
-      telefonoCliente: this.telefonoCliente,
-      fechaHora: this.fechaHora,
-      duracion: this.duracion,
-      recursos: this.recursos,
-      observaciones: this.observaciones,
-      isCanceled: this.isCanceled,
-      tour: this.tour,
-      numPersonas: this.numPersonas,
-      costoTotal: this.costoTotal,
-      anticipo: this.anticipo,
-      metodoPago: this.metodoPago,
-      vendedor: this.vendedor,
-      receptorPago: this.receptorPago
-    };
-  }
-}
-
 class ConnectionManager {
   constructor() {
     this.isOnline = navigator.onLine;
@@ -528,180 +476,41 @@ class ConnectionManager {
   }
 }
 
-class RealtimeManager {
-  constructor() {
-    this.ws = null;
-    this.clientId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
-    this.init();
-  }
+const DURACIONES = {
+  'Cabalgata': 90,
+  'Cuatrimotos': 90,
+  'ReservaVenados': 90,
+  'TunelesVolcanicos': 120,
+  'MixtoVenados': 100,
+  'RutasLargas': 180
+};
 
-  init() {
-    this.setupWebSocket();
-    this.setupStorageListener();
-    this.setupOfflineSupport();
-  }
+let deleteMode = false;
 
-  setupWebSocket() {
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.hostname}:8080`;
-
-    try {
-      this.ws = new WebSocket(wsUrl);
-      
-      this.ws.onopen = () => {
-        console.log('WebSocket connected');
-        this.reconnectAttempts = 0;
-        this.syncData();
-      };
-
-      this.ws.onclose = () => {
-        console.log('WebSocket disconnected');
-        this.handleDisconnection();
-      };
-
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        this.fallbackToLocalStorage();
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          this.handleIncomingMessage(data);
-        } catch (error) {
-          console.error('Error processing message:', error);
-        }
-      };
-    } catch (error) {
-      console.error('Error setting up WebSocket:', error);
-      this.fallbackToLocalStorage();
-    }
-  }
-
-  setupStorageListener() {
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'reservas') {
-        try {
-          const newData = JSON.parse(event.newValue);
-          if (newData && Array.isArray(newData)) {
-            sistemaReservas.reservas = this.parseReservas(newData);
-            renderizarReservasGuardadas();
-          }
-        } catch (error) {
-          console.error('Error processing storage event:', error);
-        }
-      }
-    });
-  }
-
-  setupOfflineSupport() {
-    window.addEventListener('online', () => {
-      console.log('Connection restored - attempting to reconnect WebSocket');
-      this.setupWebSocket();
-    });
-
-    window.addEventListener('offline', () => {
-      console.log('Connection lost - falling back to localStorage');
-      this.fallbackToLocalStorage();
-    });
-  }
-
-  parseReservas(data) {
-    return data.map(r => {
-      const reserva = new Reserva(
-        r.nombreCliente,
-        r.telefonoCliente,
-        r.fechaHora,
-        r.duracion,
-        r.recursos,
-        r.observaciones,
-        r.isCanceled
-      );
-      Object.assign(reserva, r);
-      return reserva;
-    });
-  }
-
-  syncData() {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        type: 'sync_request',
-        clientId: this.clientId,
-        timestamp: Date.now()
-      }));
-    }
-  }
-
-  handleIncomingMessage(data) {
-    if (data.clientId === this.clientId) return;
-
-    switch (data.type) {
-      case 'sync_response':
-      case 'update':
-        sistemaReservas.reservas = this.parseReservas(data.reservas);
-        renderizarReservasGuardadas();
-        break;
-      case 'delete':
-        if (Array.isArray(data.indices)) {
-          data.indices.sort((a, b) => b - a).forEach(index => {
-            if (index >= 0 && index < sistemaReservas.reservas.length) {
-              sistemaReservas.reservas.splice(index, 1);
-            }
-          });
-          selectedIndices.clear();
-          renderizarReservasGuardadas();
-        }
-        break;
-    }
-  }
-
-  handleDisconnection() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      setTimeout(() => this.setupWebSocket(), 5000);
-    } else {
-      console.log('Max reconnection attempts reached, falling back to localStorage');
-      this.fallbackToLocalStorage();
-    }
-  }
-
-  fallbackToLocalStorage() {
-    console.log('Falling back to localStorage synchronization');
-    try {
-      const storedData = localStorage.getItem('reservas');
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        if (Array.isArray(parsedData)) {
-          sistemaReservas.reservas = this.parseReservas(parsedData);
-          renderizarReservasGuardadas();
-        }
-      }
-    } catch (error) {
-      console.error('Error falling back to localStorage:', error);
-    }
-  }
-
-  broadcast(type, payload) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        type,
-        clientId: this.clientId,
-        timestamp: Date.now(),
-        ...payload
-      }));
-    } else {
-      this.fallbackToLocalStorage();
-    }
+class Reserva {
+  constructor(nombreCliente, telefonoCliente, fechaHora, duracion, recursos, observaciones, isCanceled = false) {
+    this.nombreCliente = nombreCliente;
+    this.telefonoCliente = telefonoCliente;
+    this.fechaHora = new Date(fechaHora);
+    this.duracion = duracion;
+    this.recursos = recursos;
+    this.observaciones = observaciones;
+    this.isCanceled = isCanceled;
+    this.fechaFin = new Date(this.fechaHora.getTime() + duracion * 60000);
+    
+    this.tour = '';
+    this.costoTotal = 0;
+    this.vendedor = '';
+    this.numPersonas = 0;
+    this.anticipo = 0;
+    this.metodoPago = '';
+    this.receptorPago = '';
   }
 }
 
 class SistemaReservas {
   constructor() {
     this.reservas = this.cargarReservas();
-    this.realtimeManager = new RealtimeManager();
   }
 
   cargarReservas() {
@@ -732,17 +541,7 @@ class SistemaReservas {
   }
 
   guardarReservas() {
-    try {
-      localStorage.setItem('reservas', JSON.stringify(this.reservas));
-      
-      if (this.realtimeManager) {
-        this.realtimeManager.broadcast('update', {
-          reservas: this.reservas
-        });
-      }
-    } catch (error) {
-      console.error('Error saving reservations:', error);
-    }
+    localStorage.setItem('reservas', JSON.stringify(this.reservas));
   }
 
   agregarReserva(reserva) {
@@ -761,11 +560,13 @@ class SistemaReservas {
     const inicio = new Date(fechaHora);
     const fin = new Date(inicio.getTime() + duracion * 60000);
 
+    // Special case for guides in ATV tours
     if (recurso.match(/^(Alberto C|Ana R|Ángel|Erick V|Iván J|Joaquín L|Luis A|Toño P|Otro)$/)) {
         const tourSelect = document.getElementById('tour');
         const isAtvTour = ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(tourSelect.value);
         
         if (isAtvTour) {
+            // Count how many times this guide is already assigned in overlapping ATV tours
             let guideCount = 0;
             this.reservas.forEach(reserva => {
                 if (reserva.isCanceled) return false;
@@ -781,10 +582,12 @@ class SistemaReservas {
                 }
             });
             
+            // Allow up to 3 ATV assignments
             return guideCount < 3;
         }
     }
 
+    // For all other resources, use the original logic
     return !this.reservas.some(reserva => {
         if (reserva.isCanceled) return false;
 
@@ -812,12 +615,11 @@ class SistemaReservas {
       }
     }
     
-    return fechaInicio;
+    return fechaInicio; // Resource is currently available
   }
 }
 
 const sistemaReservas = new SistemaReservas();
-const realtimeManager = new RealtimeManager();
 
 function formatearFecha(fecha) {
   if (!fecha) return 'N/A';
@@ -862,6 +664,7 @@ function actualizarDisponibilidad() {
         availabilityInfo.textContent = `Próxima disponibilidad: ${formatearFecha(nextAvailable)}`;
         label.appendChild(availabilityInfo);
       } else if (isAtvTour) {
+        // Add counter for ATV assignments
         let count = 0;
         sistemaReservas.reservas.forEach(reserva => {
           const reservaInicio = new Date(reserva.fechaHora);
@@ -1007,7 +810,6 @@ function showCancelacionModal(index) {
 
 document.addEventListener('DOMContentLoaded', function() {
   const connectionManager = new ConnectionManager();
-  const realtimeManager = new RealtimeManager();
   const costoTourInput = document.getElementById('costoTour');
   const anticipoInput = document.getElementById('anticipo');
   const metodoPagoSelect = document.getElementById('metodoPago');
@@ -1137,17 +939,12 @@ document.addEventListener('DOMContentLoaded', function() {
       sistemaReservas.agregarReserva(nuevaReserva);
     }
     
-    try {
-      sistemaReservas.guardarReservas();
-      renderizarReservasGuardadas();
-      
-      document.getElementById('limpiarFormulario').click();
-      
-      alert('Venta registrada exitosamente');
-    } catch (error) {
-      console.error('Error al guardar la venta:', error);
-      alert('Error al guardar la venta. Por favor intente nuevamente.');
-    }
+    sistemaReservas.guardarReservas();
+    renderizarReservasGuardadas();
+    
+    document.getElementById('limpiarFormulario').click();
+    
+    alert('Venta registrada exitosamente');
   });
 
   if(selectAllCheckbox) {
@@ -1155,12 +952,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const checkboxes = document.querySelectorAll('.venta-checkbox');
       checkboxes.forEach(checkbox => {
         checkbox.checked = this.checked;
-        const index = parseInt(checkbox.dataset.index);
-        if (this.checked) {
-          selectedIndices.add(index);
-        } else {
-          selectedIndices.delete(index);
-        }
       });
     });
   }
@@ -1172,6 +963,14 @@ document.addEventListener('DOMContentLoaded', function() {
   if(eliminarVentasBtn) {
     eliminarVentasBtn.addEventListener('click', deleteSelectedVentas);
   }
+  
+  if(exportarPDFBtn) {
+    exportarPDFBtn.addEventListener('click', exportarAPDF);
+  }
+  
+  if(exportarExcelBtn) {
+    exportarExcelBtn.addEventListener('click', exportarAExcel);
+  }
 
   initializeSelectors();
   actualizarDisponibilidad();
@@ -1182,40 +981,18 @@ function renderizarReservasGuardadas() {
   const tabla = document.getElementById('ventasTable').getElementsByTagName('tbody')[0];
   tabla.innerHTML = '';
   
-  // Update header with select all checkbox
   const headerRow = document.querySelector('#ventasTable thead tr');
-  headerRow.innerHTML = `
-    ${deleteMode ? '<th><input type="checkbox" id="selectAllVentas" onclick="selectAllVentas(this)"> Seleccionar</th>' : ''}
-    <th>Cliente</th>
-    <th>Tour</th>
-    <th>Guía(s)</th>
-    <th>Vehículo</th>
-    <th>Cuatrimoto</th>
-    <th>Hora</th>
-    <th>Total</th>
-    <th>Estado Pago</th>
-    <th>Pago Restante</th>
-    <th>Estado Tour</th>
-    <th>Vendedor</th>
-    <th>Observaciones/Motivo de cancelación</th>
-    <th>Acciones</th>
-  `;
+  const observacionesHeader = Array.from(headerRow.cells).find(cell => cell.textContent === 'Observaciones');
+  if (observacionesHeader) {
+    observacionesHeader.textContent = 'Observaciones/Motivo de cancelación';
+  }
 
   sistemaReservas.reservas.forEach((reserva, index) => {
     const row = tabla.insertRow();
+    const checkboxCell = row.insertCell(0);
+    checkboxCell.style.display = deleteMode ? 'table-cell' : 'none';
+    checkboxCell.innerHTML = `<input type="checkbox" class="venta-checkbox" data-index="${index}">`;
     
-    if (deleteMode) {
-      const checkboxCell = row.insertCell(0);
-      const isChecked = selectedIndices.has(index) ? 'checked' : '';
-      checkboxCell.innerHTML = `
-        <input type="checkbox" 
-               class="venta-checkbox" 
-               data-index="${index}" 
-               ${isChecked}
-               onchange="handleCheckboxChange(this, ${index})">
-      `;
-    }
-
     const tourDisplayNames = {
       'Cabalgata': 'Cabalgata (1.5 hrs)',
       'Cuatrimotos': 'Cuatrimotos (1.5 hrs)',
@@ -1227,21 +1004,15 @@ function renderizarReservasGuardadas() {
 
     const tourDisplayName = tourDisplayNames[reserva.tour] || reserva.tour;
     
-    // Calculate payment status and remaining payment
-    const pagoRestante = reserva.costoTotal - (reserva.anticipo || 0);
-    const estadoPago = pagoRestante <= 0 ? 'Liquidado' : 'Pendiente';
-    const pagoRestanteDisplay = pagoRestante <= 0 ? '-' : `$${pagoRestante.toFixed(2)}`;
-    
     row.innerHTML += `
+      <td>${new Date(reserva.fechaHora).toLocaleDateString()}</td>
+      <td>${new Date(reserva.fechaHora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
       <td>${reserva.nombreCliente}</td>
       <td>${tourDisplayName}</td>
       <td>${reserva.recursos.filter(r => !r.includes('Cuatri') && !['Aveo', 'Pointer', 'Sentra', 'Taxi'].includes(r)).join(', ')}</td>
       <td>${reserva.recursos.filter(r => ['Aveo', 'Pointer', 'Sentra', 'Taxi'].includes(r)).join(', ') || 'N/A'}</td>
       <td>${reserva.recursos.filter(r => r.includes('Cuatri')).join(', ') || 'N/A'}</td>
-      <td>${new Date(reserva.fechaHora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
       <td>$${reserva.costoTotal || ''}</td>
-      <td style="color: ${estadoPago === 'Liquidado' ? '#198754' : '#dc3545'}">${estadoPago}</td>
-      <td style="color: ${pagoRestante <= 0 ? '#198754' : '#dc3545'}">${pagoRestanteDisplay}</td>
       <td class="${reserva.isCanceled ? 'text-danger' : ''}">${getTourStatus(reserva.fechaHora, reserva.duracion, reserva.isCanceled)}</td>
       <td>${reserva.vendedor || ''}</td>
       <td>${reserva.observaciones || ''}</td>
@@ -1251,115 +1022,6 @@ function renderizarReservasGuardadas() {
       </td>
     `;
   });
-}
-
-function handleCheckboxChange(checkbox, index) {
-  if (checkbox.checked) {
-    selectedIndices.add(index);
-  } else {
-    selectedIndices.delete(index);
-  }
-  
-  // Update select all checkbox state
-  const selectAllCheckbox = document.getElementById('selectAllVentas');
-  const allCheckboxes = document.querySelectorAll('.venta-checkbox');
-  const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
-  
-  if (selectAllCheckbox) {
-    selectAllCheckbox.checked = allChecked;
-  }
-}
-
-function selectAllVentas(checkbox) {
-  const checkboxes = document.querySelectorAll('.venta-checkbox');
-  checkboxes.forEach(cb => {
-    cb.checked = checkbox.checked;
-    const index = parseInt(cb.dataset.index);
-    if (checkbox.checked) {
-      selectedIndices.add(index);
-    } else {
-      selectedIndices.delete(index);
-    }
-  });
-}
-
-// Update toggleDeleteMode to reset select all checkbox
-function toggleDeleteMode() {
-  deleteMode = !deleteMode;
-  const checkboxCells = document.querySelectorAll('#ventasTable td:first-child, #ventasTable th:first-child');
-  const deleteBtn = document.getElementById('eliminarVentas');
-  const toggleBtn = document.getElementById('toggleEliminar');
-  
-  checkboxCells.forEach(cell => {
-    cell.style.display = deleteMode ? 'table-cell' : 'none';
-  });
-  
-  if (deleteBtn) {
-    deleteBtn.style.display = deleteMode ? 'inline-block' : 'none';
-  }
-  
-  if (toggleBtn) {
-    toggleBtn.textContent = deleteMode ? 'Cancelar' : 'Eliminar registros';
-    toggleBtn.classList.toggle('btn-danger');
-    toggleBtn.classList.toggle('btn-warning');
-  }
-
-  // Reset selection state
-  if (!deleteMode) {
-    selectedIndices.clear();
-    const selectAllCheckbox = document.getElementById('selectAllVentas');
-    if (selectAllCheckbox) {
-      selectAllCheckbox.checked = false;
-    }
-    document.querySelectorAll('.venta-checkbox').forEach(cb => {
-      cb.checked = false;
-    });
-  }
-
-  renderizarReservasGuardadas();
-}
-
-function deleteSelectedVentas() {
-  if (selectedIndices.size === 0) {
-    alert('Por favor seleccione al menos un registro para eliminar');
-    return;
-  }
-
-  if (confirm('¿Está seguro que desea eliminar los registros seleccionados?')) {
-    try {
-      // Convert set to array and sort in descending order to avoid index shifting issues
-      const indicesToDelete = Array.from(selectedIndices).sort((a, b) => b - a);
-      
-      // Remove selected items from reservas array
-      indicesToDelete.forEach(index => {
-        sistemaReservas.reservas.splice(index, 1);
-      });
-
-      // Broadcast the delete operation to other clients
-      if (sistemaReservas.realtimeManager) {
-        sistemaReservas.realtimeManager.broadcast('delete', {
-          indices: Array.from(selectedIndices)
-        });
-      }
-
-      // Clear selection set
-      selectedIndices.clear();
-
-      // Save changes
-      sistemaReservas.guardarReservas();
-      
-      // Exit delete mode
-      toggleDeleteMode();
-      
-      // Re-render the table
-      renderizarReservasGuardadas();
-      
-      alert('Registros eliminados exitosamente');
-    } catch (error) {
-      console.error('Error deleting records:', error);
-      alert('Error al eliminar los registros. Por favor intente nuevamente.');
-    }
-  }
 }
 
 function getTourStatus(fechaHora, duracion, isCanceled = false) {
@@ -1372,6 +1034,57 @@ function getTourStatus(fechaHora, duracion, isCanceled = false) {
   if (ahora < inicio) return 'Pendiente';
   if (ahora > fin) return 'Finalizado';
   return 'En Curso';
+}
+
+function toggleDeleteMode() {
+  deleteMode = !deleteMode;
+  const checkboxCells = document.querySelectorAll('#ventasTable td:first-child, #ventasTable th:first-child');
+  const deleteBtn = document.getElementById('eliminarVentas');
+  const toggleBtn = document.getElementById('toggleEliminar');
+  const selectAllCheckbox = document.getElementById('selectAllVentas');
+  
+  checkboxCells.forEach(cell => {
+    cell.style.display = deleteMode ? 'table-cell' : 'none';
+  });
+  
+  if(deleteBtn) {
+    deleteBtn.style.display = deleteMode ? 'inline' : 'none';
+  }
+  
+  if(toggleBtn) {
+    toggleBtn.textContent = deleteMode ? 'Cancelar' : 'Eliminar registros';
+    toggleBtn.classList.toggle('btn-danger');
+    toggleBtn.classList.toggle('btn-warning');
+  }
+
+  if(!deleteMode) {
+    if(selectAllCheckbox) {
+      selectAllCheckbox.checked = false;
+    }
+    document.querySelectorAll('.venta-checkbox').forEach(cb => {
+      cb.checked = false;
+    });
+  }
+}
+
+function deleteSelectedVentas() {
+  const checkboxes = document.querySelectorAll('.venta-checkbox:checked');
+  const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index)).sort((a,b) => b-a);
+  
+  if (indices.length === 0) {
+    alert('Por favor seleccione al menos una venta para eliminar');
+    return;
+  }
+  
+  if (confirm(`¿Está seguro que desea eliminar ${indices.length} registro(s)?`)) {
+    indices.forEach(index => {
+      sistemaReservas.reservas.splice(index, 1);
+    });
+    
+    sistemaReservas.guardarReservas();
+    renderizarReservasGuardadas();
+    toggleDeleteMode();
+  }
 }
 
 function exportarAPDF() {
@@ -1407,16 +1120,17 @@ function exportarAPDF() {
       halign: 'left'
     },
     columnStyles: {
-      0: { cellWidth: 25 }, // Cliente
+      0: { cellWidth: 25 }, // Fecha
       1: { cellWidth: 25 }, // Hora
-      2: { cellWidth: 25 }, // Tour
-      3: { cellWidth: 25 }, // Guía(s)
-      4: { cellWidth: 20 }, // Vehículo
-      5: { cellWidth: 20 }, // Cuatrimoto
-      6: { cellWidth: 20 }, // Total
-      7: { cellWidth: 25 }, // Estado
-      8: { cellWidth: 25 }, // Vendedor
-      9: { cellWidth: 35 }  // Observaciones
+      2: { cellWidth: 25 }, // Cliente
+      3: { cellWidth: 25 }, // Tour
+      4: { cellWidth: 25 }, // Guía(s)
+      5: { cellWidth: 20 }, // Vehículo
+      6: { cellWidth: 20 }, // Cuatrimoto
+      7: { cellWidth: 20 }, // Total
+      8: { cellWidth: 25 }, // Estado
+      9: { cellWidth: 25 }, // Vendedor
+      10: { cellWidth: 35 }  // Observaciones
     },
     margin: { left: 10, right: 10 },
     didDrawPage: function(data) {
@@ -1450,12 +1164,13 @@ function exportarAExcel() {
   XLSX.utils.book_append_sheet(wb, ws, "Registro de Ventas");
   
   const colWidths = [
+    {wch: 12}, // Fecha
+    {wch: 8},  // Hora
     {wch: 25}, // Cliente
     {wch: 15}, // Tour
     {wch: 20}, // Guía(s)
     {wch: 20}, // Vehículo
     {wch: 10}, // Cuatrimoto
-    {wch: 8},  // Hora
     {wch: 12}, // Total
     {wch: 15}, // Estado
     {wch: 20}, // Vendedor
