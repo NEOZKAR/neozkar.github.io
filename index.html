@@ -400,10 +400,8 @@
         <div class="row mb-3">
           <div class="col-12">
             <label class="form-label">Cuatrimotos Disponibles</label>
-            <div class="form-check">
-              <div id="cuatrimotosDisponibles">
-                <!-- Se llenará dinámicamente -->
-              </div>
+            <div id="cuatrimotosDisponibles">
+              <!-- Will be populated dynamically -->
             </div>
           </div>
         </div>
@@ -922,67 +920,25 @@ function actualizarDisponibilidad() {
   const fechaHora = fechaHoraInput.value;
   const tour = tourSelect.value;
   const duracion = DURACIONES[tour];
-  const isAtvTour = ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(tour);
-
-  const guiasCheckboxes = document.querySelectorAll('#guiasDisponibles input[type="checkbox"]');
-  guiasCheckboxes.forEach(checkbox => {
-    const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
-    checkbox.disabled = !disponible;
-    const label = checkbox.parentElement;
-    if (label) {
-      const existingInfo = label.querySelector('.availability-info');
-      if (existingInfo) {
-        existingInfo.remove();
-      }
-
-      label.classList.toggle('resource-unavailable', !disponible);
-      label.classList.toggle('resource-available', disponible);
-      
-      if (!disponible) {
-        const nextAvailable = sistemaReservas.getNextAvailability(checkbox.value, fechaHora);
-        const availabilityInfo = document.createElement('div');
-        availabilityInfo.className = 'availability-info';
-        availabilityInfo.textContent = `Próxima disponibilidad: ${formatearFecha(nextAvailable)}`;
-        label.appendChild(availabilityInfo);
-      } else if (isAtvTour) {
-        let count = 0;
-        sistemaReservas.reservas.forEach(reserva => {
-          const reservaInicio = new Date(reserva.fechaHora);
-          const reservaFin = new Date(reservaInicio.getTime() + reserva.duracion * 60000);
-          const inicio = new Date(fechaHora);
-          const fin = new Date(inicio.getTime() + duracion * 60000);
-          
-          if (!reserva.isCanceled && 
-              (inicio < reservaFin && fin > reservaInicio) && 
-              ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(reserva.tour) && 
-              reserva.recursos.includes(checkbox.value)) {
-            count++;
-          }
-        });
-        
-        if (count > 0) {
-          const availabilityInfo = document.createElement('div');
-          availabilityInfo.className = 'availability-info';
-          availabilityInfo.textContent = `Asignaciones de cuatrimoto: ${count}/3`;
-          label.appendChild(availabilityInfo);
-        }
-      }
-    }
-  });
-
+  
+  // Show/hide sections based on tour type
   const showVehicles = ['ReservaVenados', 'TunelesVolcanicos', 'MixtoVenados'].includes(tour);
-  const showCuatrimotos = tour === 'Cuatrimotos' || tour === 'RutasLargas' || tour === 'MixtoVenados';
+  const showCuatrimotos = ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(tour);
 
   document.getElementById('vehiculoSection').style.display = showVehicles ? 'block' : 'none';
   document.getElementById('cuatrimotosSection').style.display = showCuatrimotos ? 'block' : 'none';
 
-  if (showVehicles) {
-    const vehiculosCheckboxes = document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"]');
-    vehiculosCheckboxes.forEach(checkbox => {
+  // Update availability for cuatrimotos if visible
+  if (showCuatrimotos) {
+    const cuatrimotosCheckboxes = document.querySelectorAll('#cuatrimotosDisponibles input[type="checkbox"]');
+    cuatrimotosCheckboxes.forEach(checkbox => {
       const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
       checkbox.disabled = !disponible;
       const label = checkbox.parentElement;
       if (label) {
+        const existingInfo = label.querySelector('.availability-info');
+        if (existingInfo) existingInfo.remove();
+        
         label.classList.toggle('resource-unavailable', !disponible);
         label.classList.toggle('resource-available', disponible);
         
@@ -997,9 +953,10 @@ function actualizarDisponibilidad() {
     });
   }
 
-  if (showCuatrimotos) {
-    const cuatrimotosCheckboxes = document.querySelectorAll('#cuatrimotosDisponibles input[type="checkbox"]');
-    cuatrimotosCheckboxes.forEach(checkbox => {
+  // Update availability for vehicles if visible
+  if (showVehicles) {
+    const vehiculosCheckboxes = document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"]');
+    vehiculosCheckboxes.forEach(checkbox => {
       const disponible = sistemaReservas.estaDisponible(checkbox.value, fechaHora, duracion);
       checkbox.disabled = !disponible;
       const label = checkbox.parentElement;
@@ -1665,6 +1622,36 @@ function initializeSelectors() {
     option.value = receptor;
     option.textContent = receptor;
     receptorSelect.appendChild(option);
+  });
+
+  // Add cuatrimotos section initialization
+  const cuatrimotosContainer = document.getElementById('cuatrimotosDisponibles');
+  cuatrimotosContainer.innerHTML = ''; // Clear existing content
+
+  // Define available cuatrimotos
+  const cuatrimotos = [
+    'Cuatri 1', 'Cuatri 2', 'Cuatri 3', 'Cuatri 4', 
+    'Cuatri 5', 'Cuatri 6', 'Cuatri 7', 'Cuatri 8'
+  ];
+
+  cuatrimotos.forEach(cuatrimoto => {
+    const cuatriDiv = document.createElement('div');
+    cuatriDiv.className = 'form-check';
+    
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.className = 'form-check-input';
+    input.id = `cuatri-${cuatrimoto.toLowerCase().replace(/\s+/g, '-')}`;
+    input.value = cuatrimoto;
+    
+    const label = document.createElement('label');
+    label.className = 'form-check-label';
+    label.htmlFor = input.id;
+    label.textContent = cuatrimoto;
+    
+    cuatriDiv.appendChild(input);
+    cuatriDiv.appendChild(label);
+    cuatrimotosContainer.appendChild(cuatriDiv);
   });
 }
 
