@@ -842,14 +842,15 @@ class SistemaReservas {
     const inicio = new Date(fechaHora);
     const fin = new Date(inicio.getTime() + duracion * 60000);
 
-    if (recurso.match(/^(Alberto C|Ana R|Ángel|Erick V|Iván J|Joaquín L|Luis A|Toño P|Otro)$/)) {
+    // Special handling for guides in ATV tours
+    if (recurso.match(/^(Alberto C|Ana R|Ángel|Erick V|Iván J|Joaquín L|Luis A|Toño P|Jonathan|Otro)$/)) {
         const tourSelect = document.getElementById('tour');
         const isAtvTour = ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(tourSelect.value);
         
         if (isAtvTour) {
             let guideCount = 0;
             this.reservas.forEach(reserva => {
-                if (reserva.isCanceled) return false;
+                if (reserva.isCanceled) return;
                 
                 const reservaInicio = new Date(reserva.fechaHora);
                 const reservaFin = new Date(reservaInicio.getTime() + reserva.duracion * 60000);
@@ -862,10 +863,11 @@ class SistemaReservas {
                 }
             });
             
-            return guideCount < 3;
+            return guideCount < 3; // Allow up to 3 ATVs per guide
         }
     }
 
+    // Regular availability check for other resources
     return !this.reservas.some(reserva => {
         if (reserva.isCanceled) return false;
 
@@ -992,24 +994,76 @@ function editVenta(index) {
   document.getElementById('observaciones').value = venta.observaciones;
 
   const showVehicles = ['ReservaVenados', 'TunelesVolcanicos', 'MixtoVenados'].includes(venta.tour);
-  const showCuatrimotos = venta.tour === 'Cuatrimotos' || venta.tour === 'RutasLargas' || venta.tour === 'MixtoVenados';
+  const showCuatrimotos = ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(venta.tour);
   
   document.getElementById('vehiculoSection').style.display = showVehicles ? 'block' : 'none';
   document.getElementById('cuatrimotosSection').style.display = showCuatrimotos ? 'block' : 'none';
 
-  document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"], #cuatrimotosSection input[type="checkbox"], #guiasDisponibles input[type="checkbox"]')
-    .forEach(checkbox => checkbox.checked = false);
+  // Clear previous selections
+  document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"], #cuatrimotosDisponibles input[type="checkbox"], #guiasDisponibles input[type="checkbox"]')
+    .forEach(checkbox => {
+      checkbox.checked = false;
+      // Remove any previous unavailability styling
+      if (checkbox.parentElement) {
+        checkbox.parentElement.classList.remove('resource-unavailable');
+        checkbox.parentElement.classList.remove('resource-available');
+        // Remove any previous availability info
+        const existingInfo = checkbox.parentElement.querySelector('.availability-info');
+        if (existingInfo) existingInfo.remove();
+      }
+      checkbox.disabled = false;
+    });
 
+  // For each resource in the current sale
   venta.recursos.forEach(recurso => {
     const checkbox = document.querySelector(`input[value="${recurso}"]`);
-    if (checkbox) checkbox.checked = true;
+    if (checkbox) {
+      checkbox.checked = true;
+      // Enable the checkbox even if it would normally be unavailable
+      checkbox.disabled = false;
+      if (checkbox.parentElement) {
+        checkbox.parentElement.classList.add('resource-available');
+        checkbox.parentElement.classList.remove('resource-unavailable');
+      }
+    }
   });
 
-  if (venta.metodoPago === 'Terminal') {
-    document.getElementById('costoTotalContainer').style.display = 'block';
-    document.getElementById('costoTotalPagar').value = venta.costoTotal;
-  } else {
-    document.getElementById('costoTotalContainer').style.display = 'none';
+  // Update availability excluding the current sale
+  const fechaHora = venta.fechaHora;
+  const duracion = DURACIONES[venta.tour];
+  
+  if (showCuatrimotos) {
+    document.querySelectorAll('#cuatrimotosDisponibles input[type="checkbox"]').forEach(checkbox => {
+      if (!venta.recursos.includes(checkbox.value)) {  // Skip checks for currently assigned ATVs
+        const disponible = sistemaReservas.reservas.every(r => {
+          if (r === venta) return true; // Skip current sale in availability check
+          
+          if (r.isCanceled) return true;
+          const reservaInicio = new Date(r.fechaHora);
+          const reservaFin = new Date(reservaInicio.getTime() + r.duracion * 60000);
+          const editInicio = new Date(fechaHora);
+          const editFin = new Date(editInicio.getTime() + duracion * 60000);
+          
+          const hayConflicto = (editInicio < reservaFin && editFin > reservaInicio);
+          return !(hayConflicto && r.recursos.includes(checkbox.value));
+        });
+        
+        checkbox.disabled = !disponible;
+        const label = checkbox.parentElement;
+        if (label) {
+          label.classList.toggle('resource-unavailable', !disponible);
+          label.classList.toggle('resource-available', disponible);
+          
+          if (!disponible) {
+            const nextAvailable = sistemaReservas.getNextAvailability(checkbox.value, fechaHora);
+            const availabilityInfo = document.createElement('div');
+            availabilityInfo.className = 'availability-info';
+            availabilityInfo.textContent = `Próxima disponibilidad: ${formatearFecha(nextAvailable)}`;
+            label.appendChild(availabilityInfo);
+          }
+        }
+      }
+    });
   }
 
   const submitBtn = document.querySelector('button[type="submit"]');
@@ -1568,7 +1622,7 @@ function exportarAExcel() {
 
 function initializeSelectors() {
   const vendedores = [
-    'Alexia', 'Ana R', 'Erick V', 'Fredy O', 'Iván J',
+    'Alan', 'Alexia', 'Ana R', 'Erick V', 'Fredy O', 'Iván J',
     'Jackie T', 'Joaquin L', 'Jonathan', 'Luis A', 'Manuel A', 'Monse'
   ];
   
@@ -1577,10 +1631,10 @@ function initializeSelectors() {
     'Jackie T', 'Joaquin L', 'Jonathan', 'Luis A', 'Manuel A', 'Mayra B', 'Monse'
   ];
   
-  // Ensure the guias array is correctly defined
+  // Keep guias array as is
   const guias = [
     'Alberto C', 'Ana R', 'Ángel', 'Erick V', 'Iván J', 'Joaquín L',
-    'Luis A', 'Toño P', 'Otro'
+    'Luis A', 'Toño P', 'Jonathan', 'Otro'
   ].sort();
 
   const guiasContainer = document.getElementById('guiasDisponibles');
