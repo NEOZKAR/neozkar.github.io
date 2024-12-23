@@ -86,18 +86,23 @@
     width: 90px;
   }
 
-  #ventasTable th:nth-child(12), /* Estado del Tour */
+  #ventasTable th:nth-child(12), /* Método de Pago */
   #ventasTable td:nth-child(12) {
     width: 100px;
   }
 
-  #ventasTable th:nth-child(13), /* Vendedor */
+  #ventasTable th:nth-child(13), /* Estado del Tour */
   #ventasTable td:nth-child(13) {
     width: 100px;
   }
 
-  #ventasTable th:nth-child(14), /* Observaciones */
+  #ventasTable th:nth-child(14), /* Vendedor */
   #ventasTable td:nth-child(14) {
+    width: 100px;
+  }
+
+  #ventasTable th:nth-child(15), /* Observaciones */
+  #ventasTable td:nth-child(15) {
     width: 200px;
   }
 
@@ -541,9 +546,10 @@
             <th style="color: inherit">Pago Restante</th>
             <th>Estado del Pago</th>
             <th>Costo Total</th>
+            <th>Método de Pago</th>
             <th>Estado del Tour</th>
             <th>Vendedor</th>
-            <th>Observaciones/Motivo de cancelación</th>
+            <th>Observaciones</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -1100,27 +1106,15 @@ function editVenta(index) {
   document.getElementById('cuatrimotosSection').style.display = showCuatrimotos ? 'block' : 'none';
 
   // Clear all checkboxes first
-  document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"], #cuatrimotosDisponibles input[type="checkbox"], #guiasDisponibles input[type="checkbox"]')
-    .forEach(checkbox => {
-      checkbox.checked = false;
-      checkbox.disabled = false;
-      if (checkbox.parentElement) {
-        checkbox.parentElement.classList.remove('resource-unavailable');
-        checkbox.parentElement.classList.remove('resource-available');
-        const existingInfo = checkbox.parentElement.querySelector('.availability-info');
-        if (existingInfo) existingInfo.remove();
-      }
-    });
+  document.querySelectorAll('#vehiculosDisponibles input[type="checkbox"], #cuatrimotosDisponibles input[type="checkbox"], #guiasDisponibles input[type="checkbox"]').forEach(checkbox => {
+    checkbox.checked = false;
+  });
 
   // Mark current resources as checked
   venta.recursos.forEach(recurso => {
     const checkbox = document.querySelector(`input[value="${recurso}"]`);
     if (checkbox) {
       checkbox.checked = true;
-      if (checkbox.parentElement) {
-        checkbox.parentElement.classList.add('resource-available');
-        checkbox.parentElement.classList.remove('resource-unavailable');
-      }
     }
   });
 
@@ -1360,11 +1354,16 @@ function renderizarReservasGuardadas() {
     <th>Pago Restante</th>
     <th>Estado del Pago</th>
     <th>Costo Total</th>
+    <th>Método de Pago</th>
     <th>Estado del Tour</th>
     <th>Vendedor</th>
     <th>Observaciones</th>
     <th>Acciones</th>
   `.trim();
+
+  sistemaReservas.reservas.sort((a, b) => {
+    return new Date(a.fechaHora) - new Date(b.fechaHora);
+  });
 
   sistemaReservas.reservas.forEach((reserva, index) => {
     const row = tabla.insertRow();
@@ -1400,6 +1399,7 @@ function renderizarReservasGuardadas() {
       <td style="color: ${pagoRestante > 0 ? '#dc3545' : 'inherit'}">$${pagoRestante.toFixed(2)}</td>
       <td style="color: ${pagoRestante > 0 ? '#dc3545' : '#198754'}">${estadoPago}</td>
       <td>$${reserva.costoTotal || ''}</td>
+      <td>${reserva.metodoPago || 'N/A'}</td>
       <td class="${reserva.isCanceled ? 'text-danger' : ''}">${getTourStatus(reserva.fechaHora, reserva.duracion, reserva.isCanceled)}</td>
       <td>${reserva.vendedor || ''}</td>
       <td>${reserva.observaciones || ''}</td>
@@ -1603,9 +1603,10 @@ function exportarAPDF() {
       7: { cellWidth: 20 }, // Pago Restante
       8: { cellWidth: 20 }, // Estado del Pago
       9: { cellWidth: 20 }, // Costo Total
-      10: { cellWidth: 20 }, // Estado del Tour
-      11: { cellWidth: 25 }, // Vendedor
-      12: { cellWidth: 35 }  // Observaciones
+      10: { cellWidth: 20 }, // Método de Pago
+      11: { cellWidth: 20 }, // Estado del Tour
+      12: { cellWidth: 25 }, // Vendedor
+      13: { cellWidth: 35 }  // Observaciones
     },
     margin: { left: 10, right: 10 },
     didDrawPage: function(data) {
@@ -1634,26 +1635,27 @@ function exportarAExcel() {
   const headers = [
     'Cliente', 'Tour', 'Hora', 'Guía(s)', 'Vehículo', 'Cuatrimoto',
     'Anticipo', 'Pago Restante', 'Estado del Pago', 'Costo Total',
-    'Estado del Tour', 'Vendedor', 'Observaciones'
+    'Método de Pago', 'Estado del Tour', 'Vendedor', 'Observaciones'
   ];
   
   // Extract data from table rows, excluding checkbox and actions columns
   const data = rows.map(row => {
     const cells = Array.from(row.cells);
     return [
-      cells[1].textContent.trim(),  // Cliente
-      cells[2].textContent.trim(),  // Tour
-      cells[3].textContent.trim(),  // Hora
-      cells[4].textContent.trim(),  // Guía(s)
-      cells[5].textContent.trim(),  // Vehículo
-      cells[6].textContent.trim(),  // Cuatrimoto
-      cells[7].textContent.trim(),  // Anticipo
-      cells[8].textContent.trim(),  // Pago Restante
-      cells[9].textContent.trim(),  // Estado del Pago
-      cells[10].textContent.trim(), // Costo Total
-      cells[11].textContent.trim(), // Estado del Tour
-      cells[12].textContent.trim(), // Vendedor
-      cells[13].textContent.trim()  // Observaciones
+      cells[1].textContent.trim(),   // Cliente
+      cells[2].textContent.trim(),   // Tour
+      cells[3].textContent.trim(),   // Hora
+      cells[4].textContent.trim(),   // Guía(s)
+      cells[5].textContent.trim(),   // Vehículo
+      cells[6].textContent.trim(),   // Cuatrimoto
+      cells[7].textContent.trim(),   // Anticipo
+      cells[8].textContent.trim(),   // Pago Restante
+      cells[9].textContent.trim(),   // Estado del Pago
+      cells[10].textContent.trim(),  // Costo Total
+      cells[11].textContent.trim(),  // Método de Pago
+      cells[12].textContent.trim(),  // Estado del Tour
+      cells[13].textContent.trim(),  // Vendedor
+      cells[14].textContent.trim()   // Observaciones
     ];
   });
 
@@ -1673,6 +1675,7 @@ function exportarAExcel() {
       {wch: 15}, // Pago Restante
       {wch: 15}, // Estado del Pago
       {wch: 12}, // Costo Total
+      {wch: 15}, // Método de Pago
       {wch: 15}, // Estado del Tour
       {wch: 20}, // Vendedor
       {wch: 40}  // Observaciones
@@ -1710,13 +1713,13 @@ function exportarAExcel() {
 
 function initializeSelectors() {
   const vendedores = [
-    'Alan', 'Alexia', 'Ana R', 'Erick V', 'Fredy O', 'Iván J',
-    'Jackie T', 'Joaquin L', 'Jonathan', 'Luis A', 'Manuel A', 'Monse'
+    'Alan', 'Alexia', 'Ana R', 'Azul', 'Erick V', 'Fredy O', 'Iván J',
+    'Jackie T', 'Joaquin L', 'Jonathan', 'Leilani', 'Luis A', 'Manuel A', 'Monse'
   ];
   
   const receptores = [
-    'Alexia', 'Ana R', 'Erick V', 'Fredy O', 'Iván J',
-    'Jackie T', 'Joaquin L', 'Jonathan', 'Luis A', 'Manuel A', 'Mayra B', 'Monse'
+    'Alan', 'Alexia', 'Ana R', 'Azul', 'Erick V', 'Fredy O', 'Iván J',
+    'Jackie T', 'Joaquin L', 'Jonathan', 'Leilani', 'Luis A', 'Manuel A', 'Mayra B', 'Monse'
   ];
   
   // Keep guias array as is
