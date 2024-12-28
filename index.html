@@ -1,4 +1,4 @@
-<html><head><base href="." />
+<html><head><base href ".");
 <title>XTREME ADVENTURE - Sistema de Ventas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -361,6 +361,44 @@
   #guiasDisponibles .form-check.resource-unavailable .assignments-counter {
     color: #dc3545;
   }
+
+  #cuatrimotoAvailabilityContent .card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+  }
+
+  #cuatrimotoAvailabilityContent .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  }
+
+  #cuatrimotoAvailabilityContent .badge {
+    font-size: 0.9em;
+    padding: 0.5em 1em;
+  }
+
+  #cuatrimotoAvailabilityContent ul li {
+    font-size: 0.9em;
+    color: #666;
+  }
+
+  #cuatrimotoAvailabilityContent .card-title {
+    color: #1e4d92;
+    font-weight: 600;
+  }
+
+  #checkCuatrimotoAvailability {
+    background: linear-gradient(135deg, #1e4d92, #2c73d2);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+  }
+
+  #checkCuatrimotoAvailability:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  }
 </style>
 </head>
 <body>
@@ -514,6 +552,11 @@
         <button type="button" class="btn btn-secondary" id="limpiarFormulario">Limpiar Formulario</button>
       </div>
     </form>
+    <div class="text-center mt-3">
+      <button type="button" class="btn btn-info" id="checkCuatrimotoAvailability">
+        Consultar Disponibilidad de Cuatrimotos
+      </button>
+    </div>
   </div>
 
   <div class="mt-4">
@@ -577,6 +620,20 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
         <button type="button" class="btn btn-danger" id="confirmarCancelacion">Confirmar Cancelación</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="cuatrimotoAvailabilityModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Disponibilidad de Cuatrimotos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="cuatrimotoAvailabilityContent"></div>
       </div>
     </div>
   </div>
@@ -1101,7 +1158,7 @@ function editVenta(index) {
 
   const showVehicles = ['ReservaVenados', 'TunelesVolcanicos', 'MixtoVenados'].includes(venta.tour);
   const showCuatrimotos = ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(venta.tour);
-  
+
   document.getElementById('vehiculoSection').style.display = showVehicles ? 'block' : 'none';
   document.getElementById('cuatrimotosSection').style.display = showCuatrimotos ? 'block' : 'none';
 
@@ -1333,6 +1390,132 @@ document.addEventListener('DOMContentLoaded', function() {
   initializeSelectors();
   actualizarDisponibilidad();
   renderizarReservasGuardadas();
+
+  function checkCuatrimotoAvailability() {
+    const cuatrimotos = [
+      'Cuatri 1', 'Cuatri 2', 'Cuatri 3', 'Cuatri 4', 
+      'Cuatri 5', 'Cuatri 6', 'Cuatri 7', 'Cuatri 8'
+    ];
+
+    const now = new Date();
+    const availability = {};
+
+    // Initialize availability for each ATV
+    cuatrimotos.forEach(cuatri => {
+      availability[cuatri] = {
+        isAvailable: true,
+        nextAvailable: now,
+        upcomingSlots: []
+      };
+    });
+
+    // Check reservations
+    sistemaReservas.reservas
+      .filter(r => !r.isCanceled && 
+             ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(r.tour))
+      .sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora))
+      .forEach(reserva => {
+        const inicio = new Date(reserva.fechaHora);
+        const fin = new Date(inicio.getTime() + reserva.duracion * 60000);
+        
+        reserva.recursos
+          .filter(r => r.includes('Cuatri'))
+          .forEach(cuatri => {
+            if (fin > now) {
+              availability[cuatri].upcomingSlots.push({
+                start: inicio,
+                end: fin
+              });
+              
+              if (inicio <= now && fin > now) {
+                availability[cuatri].isAvailable = false;
+                availability[cuatri].nextAvailable = fin;
+              }
+            }
+          });
+      });
+
+    return availability;
+  }
+
+  function setupAvailabilityCheck() {
+    // Add modal to body if it doesn't exist
+    if (!document.getElementById('cuatrimotoAvailabilityModal')) {
+      document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal fade" id="cuatrimotoAvailabilityModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Disponibilidad de Cuatrimotos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div id="cuatrimotoAvailabilityContent"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+    
+    // Add button if it doesn't exist
+    const formContainer = document.querySelector('.form-container');
+    if (!document.getElementById('checkCuatrimotoAvailability')) {
+      formContainer.insertAdjacentHTML('beforeend', `
+        <div class="text-center mt-3">
+          <button type="button" class="btn btn-info" id="checkCuatrimotoAvailability">
+            Consultar Disponibilidad de Cuatrimotos
+          </button>
+        </div>
+      `);
+    }
+
+    // Add button click handler
+    document.getElementById('checkCuatrimotoAvailability').addEventListener('click', function() {
+      const availability = checkCuatrimotoAvailability();
+      const content = document.getElementById('cuatrimotoAvailabilityContent');
+      
+      let html = '<div class="row">';
+      
+      Object.entries(availability).forEach(([cuatri, data]) => {
+        html += `
+          <div class="col-md-6 mb-3">
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title">${cuatri}</h5>
+                <p class="card-text">
+                  <span class="badge ${data.isAvailable ? 'bg-success' : 'bg-danger'}">
+                    ${data.isAvailable ? 'Disponible' : 'En uso'}
+                  </span>
+                </p>
+                ${!data.isAvailable ? 
+                  `<p class="text-muted">Próxima disponibilidad: ${formatearFecha(data.nextAvailable)}</p>` 
+                  : ''}
+                ${data.upcomingSlots.length > 0 ? 
+                  `<h6 class="mt-3">Próximas reservas:</h6>
+                   <ul class="list-unstyled">
+                     ${data.upcomingSlots.map(slot => 
+                       `<li class="border-bottom py-1">
+                         ${formatearFecha(slot.start)} - ${new Date(slot.end).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                       </li>`
+                     ).join('')}
+                   </ul>` 
+                  : '<p class="text-muted">No hay reservas próximas</p>'}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+      content.innerHTML = html;
+      
+      const modal = new bootstrap.Modal(document.getElementById('cuatrimotoAvailabilityModal'));
+      modal.show();
+    });
+  }
+
+  setupAvailabilityCheck();
 });
 
 function renderizarReservasGuardadas() {
@@ -1351,7 +1534,7 @@ function renderizarReservasGuardadas() {
     <th>Vehículo</th>
     <th>Cuatrimoto</th>
     <th>Anticipo</th>
-    <th>Pago Restante</th>
+    <th style="color: inherit">Pago Restante</th>
     <th>Estado del Pago</th>
     <th>Costo Total</th>
     <th>Método de Pago</th>
