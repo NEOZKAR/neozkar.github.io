@@ -1,4 +1,4 @@
-<html><head><base href ".");
+<html><head><base href=".">
 <title>XTREME ADVENTURE - Sistema de Ventas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -362,42 +362,107 @@
     color: #dc3545;
   }
 
-  #cuatrimotoAvailabilityContent .card {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  #guideAvailabilityTable .guide-available {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #198754;
+  }
+
+  #guideAvailabilityTable .guide-in-course {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+  }
+
+  #guideAvailabilityModal .modal-xl {
+    max-width: 95%;
+  }
+
+  #guideAvailabilityMessage {
+    margin-top: 1rem;
+  }
+
+  .guide-status-badge {
+    padding: 0.25em 0.6em;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    font-weight: 500;
+  }
+
+  .guide-status-badge.available {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #198754;
+    border: 1px solid #198754;
+  }
+
+  .guide-status-badge.in-course {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border: 1px solid #dc3545;
+  }
+  
+  .atv-card {
     transition: all 0.3s ease;
-  }
-
-  #cuatrimotoAvailabilityContent .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  }
-
-  #cuatrimotoAvailabilityContent .badge {
-    font-size: 0.9em;
-    padding: 0.5em 1em;
-  }
-
-  #cuatrimotoAvailabilityContent ul li {
-    font-size: 0.9em;
-    color: #666;
-  }
-
-  #cuatrimotoAvailabilityContent .card-title {
-    color: #1e4d92;
-    font-weight: 600;
-  }
-
-  #checkCuatrimotoAvailability {
-    background: linear-gradient(135deg, #1e4d92, #2c73d2);
-    color: white;
+    height: 100%;
     border: none;
-    padding: 10px 20px;
-    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
 
-  #checkCuatrimotoAvailability:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  .atv-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+
+  .atv-card .card-body {
+    padding: 1.5rem;
+  }
+
+  .atv-card .card-title {
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+  }
+
+  .atv-status-badge {
+    font-size: 0.9rem;
+    padding: 0.5em 1em;
+    border-radius: 50px;
+    display: inline-block;
+    margin-bottom: 1rem;
+  }
+
+  .atv-status-badge.available {
+    background-color: #28a745;
+    color: white;
+  }
+
+  .atv-status-badge.in-use {
+    background-color: #dc3545;
+    color: white;
+  }
+
+  .atv-info {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .atv-time {
+    color: #6c757d;
+    font-size: 0.85rem;
+  }
+
+  #atvAvailabilityModal .modal-dialog {
+    max-width: 90%;
+    margin: 1.75rem auto;
+  }
+
+  @media (max-width: 768px) {
+    .atv-card {
+      margin-bottom: 1rem;
+    }
+    
+    #atvAvailabilityModal .modal-dialog {
+      max-width: 95%;
+      margin: 1rem auto;
+    }
   }
 </style>
 </head>
@@ -552,11 +617,6 @@
         <button type="button" class="btn btn-secondary" id="limpiarFormulario">Limpiar Formulario</button>
       </div>
     </form>
-    <div class="text-center mt-3">
-      <button type="button" class="btn btn-info" id="checkCuatrimotoAvailability">
-        Consultar Disponibilidad de Cuatrimotos
-      </button>
-    </div>
   </div>
 
   <div class="mt-4">
@@ -572,7 +632,12 @@
     <button id="toggleEliminar" class="btn btn-warning mb-3 ms-2">
       Eliminar registros
     </button>
-
+    <button id="showGuideAvailability" class="btn btn-info mb-3 ms-2">
+      Ver Disponibilidad de Guías
+    </button>
+    <button id="showAtvAvailability" class="btn btn-info mb-3 ms-2">
+      Ver Disponibilidad de Cuatrimotos
+    </button>
     <h3>Registro de Ventas</h3>
     <div class="table-responsive">
       <table class="table table-striped" id="ventasTable">
@@ -625,15 +690,71 @@
   </div>
 </div>
 
-<div class="modal fade" id="cuatrimotoAvailabilityModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
+<div class="modal fade" id="guideAvailabilityModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Disponibilidad de Guías</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Filtrar por Estado</label>
+            <select class="form-select" id="filterGuideStatus">
+              <option value="todos">Todos</option>
+              <option value="disponible">Disponibles</option>
+              <option value="encurso">En Curso</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Filtrar por Tour</label>
+            <select class="form-select" id="filterGuideTour">
+              <option value="todos">Todos los Tours</option>
+              <option value="Cabalgata">Cabalgata</option>
+              <option value="Cuatrimotos">Cuatrimotos</option>
+              <option value="ReservaVenados">Reserva de Venados</option>
+              <option value="TunelesVolcanicos">Túneles Volcánicos</option>
+              <option value="MixtoVenados">Mixto a Venados</option>
+              <option value="RutasLargas">Rutas Largas</option>
+            </select>
+          </div>
+        </div>
+        <div id="guideAvailabilityTableContainer" class="table-responsive">
+          <table class="table" id="guideAvailabilityTable">
+            <thead>
+              <tr>
+                <th>Nombre del Guía</th>
+                <th>Estado</th>
+                <th>Tour en Curso</th>
+                <th>Vehículo/Cuatrimoto</th>
+                <th>Hora de Inicio</th>
+                <th>Hora de Finalización</th>
+                <th>Próximo Horario Disponible</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Will be populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+        <div id="guideAvailabilityMessage" class="alert d-none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="atvAvailabilityModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Disponibilidad de Cuatrimotos</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div id="cuatrimotoAvailabilityContent"></div>
+        <div id="atvAvailabilityContent" class="container-fluid">
+          <!-- Will be populated dynamically -->
+        </div>
       </div>
     </div>
   </div>
@@ -1158,7 +1279,7 @@ function editVenta(index) {
 
   const showVehicles = ['ReservaVenados', 'TunelesVolcanicos', 'MixtoVenados'].includes(venta.tour);
   const showCuatrimotos = ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(venta.tour);
-
+  
   document.getElementById('vehiculoSection').style.display = showVehicles ? 'block' : 'none';
   document.getElementById('cuatrimotosSection').style.display = showCuatrimotos ? 'block' : 'none';
 
@@ -1390,132 +1511,6 @@ document.addEventListener('DOMContentLoaded', function() {
   initializeSelectors();
   actualizarDisponibilidad();
   renderizarReservasGuardadas();
-
-  function checkCuatrimotoAvailability() {
-    const cuatrimotos = [
-      'Cuatri 1', 'Cuatri 2', 'Cuatri 3', 'Cuatri 4', 
-      'Cuatri 5', 'Cuatri 6', 'Cuatri 7', 'Cuatri 8'
-    ];
-
-    const now = new Date();
-    const availability = {};
-
-    // Initialize availability for each ATV
-    cuatrimotos.forEach(cuatri => {
-      availability[cuatri] = {
-        isAvailable: true,
-        nextAvailable: now,
-        upcomingSlots: []
-      };
-    });
-
-    // Check reservations
-    sistemaReservas.reservas
-      .filter(r => !r.isCanceled && 
-             ['Cuatrimotos', 'RutasLargas', 'MixtoVenados'].includes(r.tour))
-      .sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora))
-      .forEach(reserva => {
-        const inicio = new Date(reserva.fechaHora);
-        const fin = new Date(inicio.getTime() + reserva.duracion * 60000);
-        
-        reserva.recursos
-          .filter(r => r.includes('Cuatri'))
-          .forEach(cuatri => {
-            if (fin > now) {
-              availability[cuatri].upcomingSlots.push({
-                start: inicio,
-                end: fin
-              });
-              
-              if (inicio <= now && fin > now) {
-                availability[cuatri].isAvailable = false;
-                availability[cuatri].nextAvailable = fin;
-              }
-            }
-          });
-      });
-
-    return availability;
-  }
-
-  function setupAvailabilityCheck() {
-    // Add modal to body if it doesn't exist
-    if (!document.getElementById('cuatrimotoAvailabilityModal')) {
-      document.body.insertAdjacentHTML('beforeend', `
-        <div class="modal fade" id="cuatrimotoAvailabilityModal" tabindex="-1">
-          <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title">Disponibilidad de Cuatrimotos</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-              </div>
-              <div class="modal-body">
-                <div id="cuatrimotoAvailabilityContent"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `);
-    }
-    
-    // Add button if it doesn't exist
-    const formContainer = document.querySelector('.form-container');
-    if (!document.getElementById('checkCuatrimotoAvailability')) {
-      formContainer.insertAdjacentHTML('beforeend', `
-        <div class="text-center mt-3">
-          <button type="button" class="btn btn-info" id="checkCuatrimotoAvailability">
-            Consultar Disponibilidad de Cuatrimotos
-          </button>
-        </div>
-      `);
-    }
-
-    // Add button click handler
-    document.getElementById('checkCuatrimotoAvailability').addEventListener('click', function() {
-      const availability = checkCuatrimotoAvailability();
-      const content = document.getElementById('cuatrimotoAvailabilityContent');
-      
-      let html = '<div class="row">';
-      
-      Object.entries(availability).forEach(([cuatri, data]) => {
-        html += `
-          <div class="col-md-6 mb-3">
-            <div class="card">
-              <div class="card-body">
-                <h5 class="card-title">${cuatri}</h5>
-                <p class="card-text">
-                  <span class="badge ${data.isAvailable ? 'bg-success' : 'bg-danger'}">
-                    ${data.isAvailable ? 'Disponible' : 'En uso'}
-                  </span>
-                </p>
-                ${!data.isAvailable ? 
-                  `<p class="text-muted">Próxima disponibilidad: ${formatearFecha(data.nextAvailable)}</p>` 
-                  : ''}
-                ${data.upcomingSlots.length > 0 ? 
-                  `<h6 class="mt-3">Próximas reservas:</h6>
-                   <ul class="list-unstyled">
-                     ${data.upcomingSlots.map(slot => 
-                       `<li class="border-bottom py-1">
-                         ${formatearFecha(slot.start)} - ${new Date(slot.end).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                       </li>`
-                     ).join('')}
-                   </ul>` 
-                  : '<p class="text-muted">No hay reservas próximas</p>'}
-              </div>
-            </div>
-          </div>
-        `;
-      });
-      
-      html += '</div>';
-      content.innerHTML = html;
-      
-      const modal = new bootstrap.Modal(document.getElementById('cuatrimotoAvailabilityModal'));
-      modal.show();
-    });
-  }
-
-  setupAvailabilityCheck();
 });
 
 function renderizarReservasGuardadas() {
@@ -1669,7 +1664,7 @@ function getTourStatus(fechaHora, duracion, isCanceled = false) {
   const ahora = new Date();
   const inicio = new Date(fechaHora);
   const fin = new Date(inicio.getTime() + duracion * 60000);
-  
+
   if (ahora < inicio) return 'Pendiente';
   if (ahora > fin) return 'Finalizado';
   return 'En Curso';
@@ -1776,22 +1771,22 @@ function exportarAPDF() {
       halign: 'left'
     },
     columnStyles: {
-      0: { cellWidth: 25 }, // Cliente
-      1: { cellWidth: 25 }, // Tour
-      2: { cellWidth: 20 }, // Hora
-      3: { cellWidth: 25 }, // Guía(s)
-      4: { cellWidth: 20 }, // Vehículo
-      5: { cellWidth: 20 }, // Cuatrimoto
-      6: { cellWidth: 20 }, // Anticipo
-      7: { cellWidth: 20 }, // Pago Restante
-      8: { cellWidth: 20 }, // Estado del Pago
-      9: { cellWidth: 20 }, // Costo Total
-      10: { cellWidth: 20 }, // Método de Pago
-      11: { cellWidth: 20 }, // Estado del Tour
-      12: { cellWidth: 25 }, // Vendedor
-      13: { cellWidth: 35 }  // Observaciones
+      0: {wch: 25}, // Cliente
+      1: {wch: 25}, // Tour
+      2: {wch: 10}, // Hora
+      3: {wch: 25}, // Guía(s)
+      4: {wch: 20}, // Vehículo
+      5: {wch: 20}, // Cuatrimoto
+      6: {wch: 12}, // Anticipo
+      7: {wch: 15}, // Pago Restante
+      8: {wch: 15}, // Estado del Pago
+      9: {wch: 12}, // Costo Total
+      10: {wch: 15}, // Método de Pago
+      11: {wch: 15}, // Estado del Tour
+      12: {wch: 25}, // Vendedor
+      13: {wch: 35}  // Observaciones
     },
-    margin: { left: 10, right: 10 },
+    margin: {left: 10, right: 10},
     didDrawPage: function(data) {
       doc.text(
         'Página ' + doc.internal.getCurrentPageInfo().pageNumber,
@@ -1871,7 +1866,7 @@ function exportarAExcel() {
       const address = XLSX.utils.encode_cell({r: 0, c: C});
       ws[address].s = {
         font: { bold: true },
-        fill: { fgColor: { rgb: "CCCCCC" } }
+        fill: { fgColor: "CCCCCC" }
       };
     }
 
@@ -2019,6 +2014,281 @@ document.addEventListener('DOMContentLoaded', function() {
       submitBtn.textContent = 'Registrar Venta';
     }
   });
+});
+
+class GuideAvailabilityManager {
+  constructor() {
+    this.updateInterval = 60000; // Update every minute
+    this.setupEventListeners();
+    this.startAutoUpdate();
+  }
+
+  setupEventListeners() {
+    document.getElementById('showGuideAvailability').addEventListener('click', () => {
+      this.showAvailabilityModal();
+    });
+
+    document.getElementById('filterGuideStatus').addEventListener('change', () => {
+      this.updateAvailabilityTable();
+    });
+
+    document.getElementById('filterGuideTour').addEventListener('change', () => {
+      this.updateAvailabilityTable();
+    });
+  }
+
+  startAutoUpdate() {
+    setInterval(() => {
+      if (document.getElementById('guideAvailabilityModal').classList.contains('show')) {
+        this.updateAvailabilityTable();
+      }
+    }, this.updateInterval);
+  }
+
+  showAvailabilityModal() {
+    this.updateAvailabilityTable();
+    const modal = new bootstrap.Modal(document.getElementById('guideAvailabilityModal'));
+    modal.show();
+  }
+
+  calculateGuideStatus(guia) {
+    const now = new Date();
+    let status = {
+      isAvailable: true,
+      currentTour: null,
+      vehicle: null,
+      startTime: null,
+      endTime: null,
+      nextAvailable: now
+    };
+
+    // Filter active tours
+    const activeTours = sistemaReservas.reservas.filter(reserva => {
+      if (reserva.isCanceled) return false;
+      
+      const tourStart = new Date(reserva.fechaHora);
+      const tourEnd = new Date(tourStart.getTime() + reserva.duracion * 60000);
+      return reserva.recursos.includes(guia) && now >= tourStart && now <= tourEnd;
+    });
+
+    if (activeTours.length > 0) {
+      const currentTour = activeTours[0];
+      const startTime = new Date(currentTour.fechaHora);
+      const endTime = new Date(startTime.getTime() + currentTour.duracion * 60000);
+
+      status.isAvailable = false;
+      status.currentTour = currentTour.tour;
+      status.startTime = startTime;
+      status.endTime = endTime;
+      status.nextAvailable = endTime;
+      
+      // Find vehicle or ATV assigned
+      status.vehicle = currentTour.recursos.find(r => 
+        r.includes('Cuatri') || 
+        ['Aveo', 'Pointer', 'Sentra', 'Taxi', 'Mitsubishi'].includes(r)
+      ) || 'N/A';
+    }
+
+    return status;
+  }
+
+  updateAvailabilityTable() {
+    const tableBody = document.querySelector('#guideAvailabilityTable tbody');
+    const messageContainer = document.getElementById('guideAvailabilityMessage');
+    const statusFilter = document.getElementById('filterGuideStatus').value;
+    const tourFilter = document.getElementById('filterGuideTour').value;
+
+    try {
+      const guias = [
+        'Alberto C', 'Ana R', 'Ángel', 'Erick V', 'Iván J', 'Joaquín L',
+        'Luis A', 'Toño P', 'Jonathan', 'Otro'
+      ].sort();
+
+      let hasAvailableGuides = false;
+      let hasActiveGuides = false;
+
+      tableBody.innerHTML = '';
+      
+      guias.forEach(guia => {
+        const status = this.calculateGuideStatus(guia);
+        
+        // Apply filters
+        if (statusFilter !== 'todos') {
+          if (statusFilter === 'disponible' && !status.isAvailable) return;
+          if (statusFilter === 'encurso' && status.isAvailable) return;
+        }
+        
+        if (tourFilter !== 'todos' && status.currentTour !== tourFilter) {
+          if (!status.isAvailable) return;
+        }
+
+        if (status.isAvailable) hasAvailableGuides = true;
+        else hasActiveGuides = true;
+
+        const row = document.createElement('tr');
+        row.className = status.isAvailable ? 'guide-available' : 'guide-in-course';
+        
+        row.innerHTML = `
+          <td>${guia}</td>
+          <td>
+            <span class="guide-status-badge ${status.isAvailable ? 'available' : 'in-course'}">
+              ${status.isAvailable ? 'Disponible' : 'En Curso'}
+            </span>
+          </td>
+          <td>${status.currentTour || 'N/A'}</td>
+          <td>${status.vehicle || 'N/A'}</td>
+          <td>${status.startTime ? status.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}</td>
+          <td>${status.endTime ? status.endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}</td>
+          <td>${status.nextAvailable.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+        `;
+        
+        tableBody.appendChild(row);
+      });
+
+      // Show appropriate message if no results
+      messageContainer.classList.remove('d-none', 'alert-info', 'alert-danger');
+      
+      if (tableBody.children.length === 0) {
+        messageContainer.classList.add('alert-info');
+        if (!hasAvailableGuides && !hasActiveGuides) {
+          messageContainer.textContent = "No hay guías que coincidan con los filtros seleccionados.";
+        } else if (!hasAvailableGuides) {
+          messageContainer.textContent = "No hay guías disponibles en este momento.";
+        } else {
+          messageContainer.textContent = "No hay tours en curso en este momento.";
+        }
+        messageContainer.classList.remove('d-none');
+      } else {
+        messageContainer.classList.add('d-none');
+      }
+
+    } catch (error) {
+      console.error('Error updating guide availability:', error);
+      messageContainer.classList.remove('d-none');
+      messageContainer.classList.add('alert-danger');
+      messageContainer.textContent = "Hubo un problema al cargar la disponibilidad de los guías. Inténtalo nuevamente más tarde.";
+    }
+  }
+}
+
+// Initialize the guide availability manager when the DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  window.guideAvailabilityManager = new GuideAvailabilityManager();
+});
+
+class ATVAvailabilityManager {
+  constructor() {
+    this.updateInterval = 60000; // Update every minute
+    this.setupEventListeners();
+    this.startAutoUpdate();
+  }
+
+  setupEventListeners() {
+    document.getElementById('showAtvAvailability').addEventListener('click', () => {
+      this.showAvailabilityModal();
+    });
+  }
+
+  startAutoUpdate() {
+    setInterval(() => {
+      if (document.getElementById('atvAvailabilityModal').classList.contains('show')) {
+        this.updateAvailabilityContent();
+      }
+    }, this.updateInterval);
+  }
+
+  showAvailabilityModal() {
+    this.updateAvailabilityContent();
+    const modal = new bootstrap.Modal(document.getElementById('atvAvailabilityModal'));
+    modal.show();
+  }
+
+  calculateATVStatus(atvName) {
+    const now = new Date();
+    let status = {
+      isAvailable: true,
+      currentTour: null,
+      startTime: null,
+      endTime: null,
+      nextAvailable: now
+    };
+
+    const activeTours = sistemaReservas.reservas.filter(reserva => {
+      if (reserva.isCanceled) return false;
+      
+      const tourStart = new Date(reserva.fechaHora);
+      const tourEnd = new Date(tourStart.getTime() + reserva.duracion * 60000);
+      return reserva.recursos.includes(atvName) && now <= tourEnd;
+    }).sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora));
+
+    if (activeTours.length > 0) {
+      const currentTour = activeTours[0];
+      const startTime = new Date(currentTour.fechaHora);
+      const endTime = new Date(startTime.getTime() + currentTour.duracion * 60000);
+
+      if (now >= startTime && now <= endTime) {
+        status.isAvailable = false;
+        status.currentTour = currentTour.tour;
+        status.startTime = startTime;
+        status.endTime = endTime;
+      }
+      
+      status.nextAvailable = endTime;
+    }
+
+    return status;
+  }
+
+  updateAvailabilityContent() {
+    const container = document.getElementById('atvAvailabilityContent');
+    const atvs = [];
+    for (let i = 1; i <= 8; i++) {
+      atvs.push(`Cuatri ${i}`);
+    }
+
+    let html = '<div class="row">';
+    
+    atvs.forEach(atv => {
+      const status = this.calculateATVStatus(atv);
+      
+      html += `
+        <div class="col-md-6 col-lg-4 mb-3">
+          <div class="card atv-card">
+            <div class="card-body">
+              <h5 class="card-title">${atv}</h5>
+              <p class="card-text">
+                <span class="atv-status-badge ${status.isAvailable ? 'available' : 'in-use'}">
+                  ${status.isAvailable ? 'Disponible' : 'En Curso'}
+                </span>
+              </p>
+              
+              ${status.isAvailable ? 
+                `<p class="text-muted">No hay reservas próximas</p>` :
+                `<div class="atv-info">
+                  <p class="mb-2">Tour actual: ${status.currentTour}</p>
+                  <p class="atv-time">
+                    Inicio: ${status.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}<br>
+                    Finalización: ${status.endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  </p>
+                  <p class="atv-time">
+                    Próxima disponibilidad: ${status.nextAvailable.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  </p>
+                </div>`
+              }
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+  }
+}
+
+// Initialize the ATV availability manager when the DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  window.atvAvailabilityManager = new ATVAvailabilityManager();
 });
 </script>
 
